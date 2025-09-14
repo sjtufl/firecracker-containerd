@@ -1,0 +1,36 @@
+# SSH daemon configuration for Firecracker VM
+# Security-focused configuration for container environment
+
+Port 22
+Protocol 2
+
+# Authentication
+PermitRootLogin yes
+PasswordAuthentication yes
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+
+# Security settings
+PermitEmptyPasswords no
+ChallengeResponseAuthentication no
+UsePAM yes
+PrintMotd no
+PrintLastLog yes
+TCPKeepAlive yes
+UsePrivilegeSeparation sandbox
+
+# Performance settings for VM environment
+ClientAliveInterval 60
+ClientAliveCountMax 3
+
+# Logging
+SyslogFacility AUTH
+LogLevel INFO
+
+# Subsystems
+Subsystem sftp /usr/lib/openssh/sftp-server
+
+# Host key locations
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_ecdsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key

@@ -1,0 +1,12 @@
+[Unit]
+Description=SSH setup for Firecracker VM
+Before=ssh.service
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ssh-setup.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=firecracker.target
