@@ -373,11 +373,26 @@ func (s *service) StartShim(shimCtx context.Context, opts shim.StartOpts) (strin
 		return "", err
 	}
 
+	vcpuCount, memSizeMib, err := bundleDir.OCIConfig().VMSizeConfig()
+	if err != nil {
+		return "", fmt.Errorf("failed to get VM size config from OCI config: %w", err)
+	}
+	log.Infof("VM size config from OCI config: vcpu count %d, memory size %d MiB", vcpuCount, memSizeMib)
+
+	// It's okay if we only specify vcpu or memSizeMib, the other will be defaulted.
+	var machineCfg = &proto.FirecrackerMachineConfiguration{}
+	if vcpuCount > 0 {
+		machineCfg.VcpuCount = vcpuCount
+	}
+	if memSizeMib > 0 {
+		machineCfg.MemSizeMib = memSizeMib
+	}
 	fcControlClient := fccontrolTtrpc.NewFirecrackerClient(ttrpcClient)
 	_, err = fcControlClient.CreateVM(shimCtx, &proto.CreateVMRequest{
 		VMID:                     s.vmID,
 		ExitAfterAllTasksDeleted: exitAfterAllTasksDeleted,
 		ContainerCount:           int32(containerCount),
+		MachineCfg:               machineCfg,
 	})
 	if err != nil {
 		errStatus, ok := status.FromError(err)

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/firecracker-microvm/firecracker-containerd/internal"
 	"github.com/firecracker-microvm/firecracker-containerd/runtime/firecrackeroci"
@@ -127,4 +128,42 @@ func (c *OCIConfig) VMID() (string, error) {
 	// This will return empty string if the key is not present in the OCI config, which the caller can decide
 	// how to deal with
 	return ociConfig.Annotations[firecrackeroci.VMIDAnnotationKey], nil
+}
+
+// VMSizeConfig returns the firecracker VM size config (vcpu count and memory size in MiB)
+// set by the client in the OCI config Annotations section, if any.
+// If not set, it returns 0, 0, nil.
+func (c *OCIConfig) VMSizeConfig() (vcpuCount, memSizeMib uint32, err error) {
+	ociConfigFile, err := c.File()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	defer ociConfigFile.Close()
+	var ociConfig struct {
+		Annotations map[string]string `json:"annotations,omitempty"`
+	}
+
+	if err := json.NewDecoder(ociConfigFile).Decode(&ociConfig); err != nil {
+		return 0, 0, fmt.Errorf("failed to parse Annotations section of OCI config file %s: %w", c.path, err)
+	}
+
+	var (
+		vcpuCountIntValue  int
+		memSizeMibIntValue int
+	)
+	if vcpuCountStr, ok := ociConfig.Annotations[firecrackeroci.VMVCpuCountAnnotationKey]; ok {
+		vcpuCountIntValue, err = strconv.Atoi(vcpuCountStr)
+		if err != nil {
+			return 0, 0, fmt.Errorf("failed to parse vcpu count from annotation %q: %w", vcpuCountStr, err)
+		}
+	}
+	if memSizeMibStr, ok := ociConfig.Annotations[firecrackeroci.VMMemSizeMibAnnotationKey]; ok {
+		memSizeMibIntValue, err = strconv.Atoi(memSizeMibStr)
+		if err != nil {
+			return 0, 0, fmt.Errorf("failed to parse memory size from annotation %q: %w", memSizeMibStr, err)
+		}
+	}
+
+	return uint32(vcpuCountIntValue), uint32(memSizeMibIntValue), nil
 }
