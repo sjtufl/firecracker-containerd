@@ -42,4 +42,7 @@ service Firecracker {
 
     // Updates a balloon device statistics polling interval.
     rpc UpdateBalloonStats(UpdateBalloonStatsRequest) returns(google.protobuf.Empty);
+
+    // Creates a full snapshot for a VM
+    rpc CreateSnapshot(CreateSnapshotRequest) returns(google.protobuf.Empty);
 }

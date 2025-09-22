@@ -41,6 +41,13 @@ message CreateVMRequest {
     string MetricsFifoPath = 13;
 
     FirecrackerBalloonDevice BalloonDevice = 14;
+
+    bool ShouldLoadSnapshot = 15;
+
+    string MemFilePath = 16;
+    string SnapshotPath = 17;
+
+    repeated DriveOverride DriveOverrides = 18;
 }
 
 message CreateVMResponse {
@@ -203,4 +210,12 @@ message GetBalloonStatsResponse {
 message UpdateBalloonStatsRequest {
     string VMID = 1;
     int64 StatsPollingIntervals = 2;
+}
+
+message CreateSnapshotRequest {
+    string VMID = 1;
+
+    string MemFilePath = 2;
+
+    string SnapshotPath = 3;
 }

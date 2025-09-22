@@ -448,6 +448,24 @@ func (s *local) UpdateBalloonStats(requestCtx context.Context, req *proto.Update
 	return resp, nil
 }
 
+// CreateSnapshot creates a full snapshot for a VM
+func (s *local) CreateSnapshot(ctx context.Context, req *proto.CreateSnapshotRequest) (*types.Empty, error) {
+	client, err := s.shimFirecrackerClient(ctx, req.VMID)
+	if err != nil {
+		return nil, err
+	}
+
+	defer client.Close()
+	resp, err := client.CreateSnapshot(ctx, req)
+	if err != nil {
+		err = fmt.Errorf("shim client failed to create snapshot: %w", err)
+		s.logger.WithError(err).Error()
+		return nil, err
+	}
+
+	return resp, nil
+}
+
 func (s *local) newShim(ns, vmID, containerdAddress string, shimSocket *net.UnixListener, fcSocket *net.UnixListener) (*exec.Cmd, error) {
 	logger := s.logger.WithField("vmID", vmID)
 

@@ -605,6 +605,15 @@ func (s *service) createVM(requestCtx context.Context, request *proto.CreateVMRe
 
 	opts = append(opts, jailedOpts...)
 
+	if request.ShouldLoadSnapshot {
+		if request.SnapshotPath == "" || request.MemFilePath == "" {
+			return fmt.Errorf("snapshot path and mem file path must be provided to load a snapshot")
+		}
+		s.logger.Infof("Loading snapshot from %s and %s", request.SnapshotPath, request.MemFilePath)
+		opts = append(opts, firecracker.WithSnapshot(request.MemFilePath, request.SnapshotPath,
+			func(sc *firecracker.SnapshotConfig) { sc.ResumeVM = true }))
+	}
+
 	// In the event that a noop jailer is used, we will pass in the shim context
 	// and have the SDK construct a new machine using that context. Otherwise, a
 	// custom process runner will be provided via options which will stomp over
@@ -631,9 +640,11 @@ func (s *service) createVM(requestCtx context.Context, request *proto.CreateVMRe
 	s.ioProxyClient = ioproxy.NewIOProxyClient(rpcClient)
 	s.exitAfterAllTasksDeleted = request.ExitAfterAllTasksDeleted
 
-	err = s.mountDrives(requestCtx)
-	if err != nil {
-		return err
+	if !request.ShouldLoadSnapshot {
+		err = s.mountDrives(requestCtx)
+		if err != nil {
+			return err
+		}
 	}
 
 	s.logger.Info("successfully started the VM")
@@ -937,6 +948,24 @@ func (s *service) UpdateBalloonStats(requestCtx context.Context, req *proto.Upda
 	return &types.Empty{}, nil
 }
 
+// CreateSnapshot will create a snapshot of the VM being managed by this shim
+func (s *service) CreateSnapshot(ctx context.Context, req *proto.CreateSnapshotRequest) (*types.Empty, error) {
+	defer logPanicAndDie(s.logger)
+
+	err := s.waitVMReady()
+	if err != nil {
+		s.logger.WithError(err).Error()
+		return nil, err
+	}
+
+	if err := s.machine.CreateSnapshot(ctx, req.MemFilePath, req.SnapshotPath); err != nil {
+		s.logger.WithError(err).Error()
+		return nil, err
+	}
+
+	return &types.Empty{}, nil
+}
+
 func (s *service) buildVMConfiguration(req *proto.CreateVMRequest) (*firecracker.Config, error) {
 	for _, driveMount := range req.DriveMounts {
 		// Verify the request specified an absolute path for the source/dest of drives.
@@ -1021,24 +1050,26 @@ func (s *service) buildVMConfiguration(req *proto.CreateVMRequest) (*firecracker
 	cfg.Drives = s.buildRootDrive(req)
 
 	// Drives configuration
-	containerCount := int(req.ContainerCount)
-	if containerCount < 1 {
-		// containerCount should always be positive so that at least one container
-		// can run inside the VM. This makes the assumption that a task is going
-		// to be run, and to do that at least one container is needed.
-		containerCount = 1
-	}
+	if !req.ShouldLoadSnapshot {
+		containerCount := int(req.ContainerCount)
+		if containerCount < 1 {
+			// containerCount should always be positive so that at least one container
+			// can run inside the VM. This makes the assumption that a task is going
+			// to be run, and to do that at least one container is needed.
+			containerCount = 1
+		}
 
-	s.containerStubHandler, err = CreateContainerStubs(
-		&cfg, s.jailer, containerCount, s.logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create container stub drives: %w", err)
-	}
+		s.containerStubHandler, err = CreateContainerStubs(
+			&cfg, s.jailer, containerCount, s.logger)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create container stub drives: %w", err)
+		}
 
-	s.driveMountStubs, err = CreateDriveMountStubs(
-		&cfg, s.jailer, req.DriveMounts, s.logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create drive mount stub drives: %w", err)
+		s.driveMountStubs, err = CreateDriveMountStubs(
+			&cfg, s.jailer, req.DriveMounts, s.logger)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create drive mount stub drives: %w", err)
+		}
 	}
 
 	// If no value for NetworkInterfaces was specified (not even an empty but non-nil list) and

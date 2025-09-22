@@ -892,6 +892,61 @@ func (x *FirecrackerBalloonDevice) GetStatsPollingIntervals() int64 {
 	return 0
 }
 
+type DriveOverride struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	DriveID    string `protobuf:"bytes,1,opt,name=DriveID,proto3" json:"DriveID,omitempty"`       // ID of the drive to override.
+	PathOnHost string `protobuf:"bytes,2,opt,name=PathOnHost,proto3" json:"PathOnHost,omitempty"` // New host path for the drive.
+}
+
+func (x *DriveOverride) Reset() {
+	*x = DriveOverride{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_types_proto_msgTypes[11]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DriveOverride) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DriveOverride) ProtoMessage() {}
+
+func (x *DriveOverride) ProtoReflect() protoreflect.Message {
+	mi := &file_types_proto_msgTypes[11]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DriveOverride.ProtoReflect.Descriptor instead.
+func (*DriveOverride) Descriptor() ([]byte, []int) {
+	return file_types_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *DriveOverride) GetDriveID() string {
+	if x != nil {
+		return x.DriveID
+	}
+	return ""
+}
+
+func (x *DriveOverride) GetPathOnHost() string {
+	if x != nil {
+		return x.PathOnHost
+	}
+	return ""
+}
+
 type CNIConfiguration_CNIArg struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -904,7 +959,7 @@ type CNIConfiguration_CNIArg struct {
 func (x *CNIConfiguration_CNIArg) Reset() {
 	*x = CNIConfiguration_CNIArg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_proto_msgTypes[11]
+		mi := &file_types_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -917,7 +972,7 @@ func (x *CNIConfiguration_CNIArg) String() string {
 func (*CNIConfiguration_CNIArg) ProtoMessage() {}
 
 func (x *CNIConfiguration_CNIArg) ProtoReflect() protoreflect.Message {
-	mi := &file_types_proto_msgTypes[11]
+	mi := &file_types_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1080,8 +1135,13 @@ var file_types_proto_rawDesc = []byte{
 	0x74, 0x65, 0x4f, 0x6e, 0x4f, 0x6f, 0x6d, 0x12, 0x34, 0x0a, 0x15, 0x53, 0x74, 0x61, 0x74, 0x73,
 	0x50, 0x6f, 0x6c, 0x6c, 0x69, 0x6e, 0x67, 0x49, 0x6e, 0x74, 0x65, 0x72, 0x76, 0x61, 0x6c, 0x73,
 	0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x15, 0x53, 0x74, 0x61, 0x74, 0x73, 0x50, 0x6f, 0x6c,
-	0x6c, 0x69, 0x6e, 0x67, 0x49, 0x6e, 0x74, 0x65, 0x72, 0x76, 0x61, 0x6c, 0x73, 0x42, 0x09, 0x5a,
-	0x07, 0x2e, 0x3b, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6c, 0x69, 0x6e, 0x67, 0x49, 0x6e, 0x74, 0x65, 0x72, 0x76, 0x61, 0x6c, 0x73, 0x22, 0x49, 0x0a,
+	0x0d, 0x44, 0x72, 0x69, 0x76, 0x65, 0x4f, 0x76, 0x65, 0x72, 0x72, 0x69, 0x64, 0x65, 0x12, 0x18,
+	0x0a, 0x07, 0x44, 0x72, 0x69, 0x76, 0x65, 0x49, 0x44, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x07, 0x44, 0x72, 0x69, 0x76, 0x65, 0x49, 0x44, 0x12, 0x1e, 0x0a, 0x0a, 0x50, 0x61, 0x74, 0x68,
+	0x4f, 0x6e, 0x48, 0x6f, 0x73, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x50, 0x61,
+	0x74, 0x68, 0x4f, 0x6e, 0x48, 0x6f, 0x73, 0x74, 0x42, 0x09, 0x5a, 0x07, 0x2e, 0x3b, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1096,7 +1156,7 @@ func file_types_proto_rawDescGZIP() []byte {
 	return file_types_proto_rawDescData
 }
 
-var file_types_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_types_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_types_proto_goTypes = []interface{}{
 	(*ExtraData)(nil),                       // 0: ExtraData
 	(*FirecrackerNetworkInterface)(nil),     // 1: FirecrackerNetworkInterface
@@ -1109,16 +1169,17 @@ var file_types_proto_goTypes = []interface{}{
 	(*FirecrackerRateLimiter)(nil),          // 8: FirecrackerRateLimiter
 	(*FirecrackerTokenBucket)(nil),          // 9: FirecrackerTokenBucket
 	(*FirecrackerBalloonDevice)(nil),        // 10: FirecrackerBalloonDevice
-	(*CNIConfiguration_CNIArg)(nil),         // 11: CNIConfiguration.CNIArg
-	(*any1.Any)(nil),                        // 12: google.protobuf.Any
+	(*DriveOverride)(nil),                   // 11: DriveOverride
+	(*CNIConfiguration_CNIArg)(nil),         // 12: CNIConfiguration.CNIArg
+	(*any1.Any)(nil),                        // 13: google.protobuf.Any
 }
 var file_types_proto_depIdxs = []int32{
-	12, // 0: ExtraData.RuncOptions:type_name -> google.protobuf.Any
+	13, // 0: ExtraData.RuncOptions:type_name -> google.protobuf.Any
 	8,  // 1: FirecrackerNetworkInterface.InRateLimiter:type_name -> FirecrackerRateLimiter
 	8,  // 2: FirecrackerNetworkInterface.OutRateLimiter:type_name -> FirecrackerRateLimiter
 	2,  // 3: FirecrackerNetworkInterface.CNIConfig:type_name -> CNIConfiguration
 	3,  // 4: FirecrackerNetworkInterface.StaticConfig:type_name -> StaticNetworkConfiguration
-	11, // 5: CNIConfiguration.Args:type_name -> CNIConfiguration.CNIArg
+	12, // 5: CNIConfiguration.Args:type_name -> CNIConfiguration.CNIArg
 	4,  // 6: StaticNetworkConfiguration.IPConfig:type_name -> IPConfiguration
 	8,  // 7: FirecrackerRootDrive.RateLimiter:type_name -> FirecrackerRateLimiter
 	8,  // 8: FirecrackerDriveMount.RateLimiter:type_name -> FirecrackerRateLimiter
@@ -1270,6 +1331,18 @@ func file_types_proto_init() {
 			}
 		}
 		file_types_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DriveOverride); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_types_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*CNIConfiguration_CNIArg); i {
 			case 0:
 				return &v.state
@@ -1288,7 +1361,7 @@ func file_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_types_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

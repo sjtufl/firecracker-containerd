@@ -101,7 +101,7 @@ proto:
 		--file tools/docker/Dockerfile.proto-builder \
 		--tag localhost/$(PROTO_BUILDER_NAME):${DOCKER_IMAGE_TAG} \
 		$(CURDIR)/tools/docker
-	PATH=$(BINPATH):$(PATH) $(MAKE) -C proto/ proto-docker
+	$(MAKE) -C proto/ proto-docker
 
 clean:
 	for d in $(SUBDIRS); do $(MAKE) -C $$d clean; done
