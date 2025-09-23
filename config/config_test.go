@@ -14,11 +14,13 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
 
 	"github.com/firecracker-microvm/firecracker-containerd/internal"
+	"github.com/firecracker-microvm/firecracker-containerd/proto"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -61,6 +63,34 @@ func TestLoadConfigOverrides(t *testing.T) {
 	assert.Equal(t, overrideCPUTemplate, cfg.CPUTemplate, "expected overridden CPU template")
 
 	assert.True(t, cfg.DebugHelper.LogFirecrackerOutput())
+}
+
+func TestStaticIPConfig(t *testing.T) {
+	config := &Config{
+		DefaultNetworkInterfaces: []proto.FirecrackerNetworkInterface{
+			{
+				CNIConfig: &proto.CNIConfiguration{
+					NetworkName:   "fcnet",
+					InterfaceName: "veth0",
+				},
+				StaticConfig: &proto.StaticNetworkConfiguration{
+					HostDevName: "tap0",
+					MacAddress:  "AA:FC:00:00:00:01",
+					IPConfig: &proto.IPConfiguration{
+						PrimaryAddr: "169.254.0.5/24",
+						GatewayAddr: "169.254.0.1",
+					},
+				},
+			},
+		},
+	}
+	configBytes, err := json.Marshal(config)
+	if err != nil {
+		t.Error("failed to marshal config to JSON:", err)
+		return
+	}
+
+	t.Logf("Config JSON: %s", string(configBytes))
 }
 
 func createTempConfig(t *testing.T, contents string) (string, func()) {
