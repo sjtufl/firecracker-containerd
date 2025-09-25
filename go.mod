@@ -15,7 +15,7 @@ require (
 	github.com/containernetworking/cni v1.2.0
 	github.com/containernetworking/plugins v1.4.0
 	github.com/firecracker-microvm/firecracker-go-sdk v1.0.0
-	github.com/gofrs/uuid v3.3.0+incompatible
+	github.com/gofrs/uuid v4.0.0+incompatible
 	github.com/golang/protobuf v1.5.4
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/miekg/dns v1.1.62
@@ -27,14 +27,17 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
 	github.com/vishvananda/netlink v1.2.1-beta.2
-	go.uber.org/goleak v1.1.12
+	go.uber.org/goleak v1.2.1
 	golang.org/x/sync v0.16.0
 	golang.org/x/sys v0.34.0
 	google.golang.org/grpc v1.64.1
 	google.golang.org/protobuf v1.35.2
 )
 
-replace github.com/firecracker-microvm/firecracker-go-sdk => github.com/sjtufl/firecracker-go-sdk v0.0.0-20250923063610-edb512bfb66d
+replace (
+	github.com/containerd/containerd => github.com/sjtufl/containerd v0.0.0-20250925150551-fb5756fbbd11
+	github.com/firecracker-microvm/firecracker-go-sdk => github.com/sjtufl/firecracker-go-sdk v0.0.0-20250923063610-edb512bfb66d
+)
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
@@ -97,7 +100,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
-	github.com/klauspost/cpuid/v2 v2.0.4 // indirect
+	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mdlayher/socket v0.2.0 // indirect
@@ -123,7 +126,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.16.0 // indirect
-	github.com/prometheus/client_model v0.3.0 // indirect
+	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.10.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
