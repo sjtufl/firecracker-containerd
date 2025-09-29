@@ -167,3 +167,77 @@ func (c *OCIConfig) VMSizeConfig() (vcpuCount, memSizeMib uint32, err error) {
 
 	return uint32(vcpuCountIntValue), uint32(memSizeMibIntValue), nil
 }
+
+// VMProvisionMode returns the firecracker VM provision mode (create or clone)
+// set by the client in the OCI config Annotations section, if any.
+// If not set, it returns the empty string and nil error.
+func (c *OCIConfig) VMProvisionMode() (firecrackeroci.ProvisionMode, error) {
+	ociConfigFile, err := c.File()
+	if err != nil {
+		return "", err
+	}
+
+	defer ociConfigFile.Close()
+	var ociConfig struct {
+		Annotations map[string]string `json:"annotations,omitempty"`
+	}
+
+	if err := json.NewDecoder(ociConfigFile).Decode(&ociConfig); err != nil {
+		return "", fmt.Errorf("failed to parse Annotations section of OCI config file %s: %w", c.path, err)
+	}
+
+	provisionModeStr := ociConfig.Annotations[firecrackeroci.VMProvisionMode]
+	switch provisionModeStr {
+	case string(firecrackeroci.ProvisionModeClone):
+		return firecrackeroci.ProvisionModeClone, nil
+	case string(firecrackeroci.ProvisionModeCreate):
+		return firecrackeroci.ProvisionModeCreate, nil
+	case "":
+		// Not set, return empty string and nil error
+		return "", nil
+	default:
+		return "", fmt.Errorf("unknown provision mode %q in OCI config file %s", provisionModeStr, c.path)
+	}
+}
+
+// SnapshotPaths returns the firecracker VM snapshot memory and state paths
+// set by the client in the OCI config Annotations section, if any.
+// If not set, it returns two empty strings and nil error.
+func (c *OCIConfig) SnapshotPaths() (memoryPath, statePath string, err error) {
+	ociConfigFile, err := c.File()
+	if err != nil {
+		return "", "", err
+	}
+
+	defer ociConfigFile.Close()
+	var ociConfig struct {
+		Annotations map[string]string `json:"annotations,omitempty"`
+	}
+
+	if err := json.NewDecoder(ociConfigFile).Decode(&ociConfig); err != nil {
+		return "", "", fmt.Errorf("failed to parse Annotations section of OCI config file %s: %w", c.path, err)
+	}
+
+	return ociConfig.Annotations[firecrackeroci.VMSnapshotMemoryPath], ociConfig.Annotations[firecrackeroci.VMSnapshotStatePath], nil
+}
+
+// SnapshotDriveOverrides returns the raw json map string of firecracker VM snapshot
+// drive overrides set by the client in the OCI config Annotations section, if any.
+// If not set, it returns an empty map and nil error.
+func (c *OCIConfig) RawSnapshotDriveOverrides() (string, error) {
+	ociConfigFile, err := c.File()
+	if err != nil {
+		return "", err
+	}
+
+	defer ociConfigFile.Close()
+	var ociConfig struct {
+		Annotations map[string]string `json:"annotations,omitempty"`
+	}
+
+	if err := json.NewDecoder(ociConfigFile).Decode(&ociConfig); err != nil {
+		return "", fmt.Errorf("failed to parse Annotations section of OCI config file %s: %w", c.path, err)
+	}
+
+	return ociConfig.Annotations[firecrackeroci.VMSnapshotDriveOverrides], nil
+}

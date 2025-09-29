@@ -64,6 +64,7 @@ import (
 	drivemount "github.com/firecracker-microvm/firecracker-containerd/proto/service/drivemount/ttrpc"
 	fccontrolTtrpc "github.com/firecracker-microvm/firecracker-containerd/proto/service/fccontrol/ttrpc"
 	ioproxy "github.com/firecracker-microvm/firecracker-containerd/proto/service/ioproxy/ttrpc"
+	"github.com/firecracker-microvm/firecracker-containerd/runtime/firecrackeroci"
 )
 
 func init() {
@@ -333,6 +334,18 @@ func (s *service) StartShim(shimCtx context.Context, opts shim.StartOpts) (strin
 	}
 	bundleDir := bundle.Dir(cwd)
 
+	client, err := ttrpcutil.NewClient(opts.TTRPCAddress)
+	if err != nil {
+		return "", err
+	}
+
+	ttrpcClient, err := client.Client()
+	if err != nil {
+		return "", err
+	}
+
+	var createReq = &proto.CreateVMRequest{}
+
 	// Since we're running a shim start routine, we need to determine the vmID for the incoming
 	// container. Start by looking at the container's OCI annotations
 	s.vmID, err = bundleDir.OCIConfig().VMID()
@@ -363,14 +376,47 @@ func (s *service) StartShim(shimCtx context.Context, opts shim.StartOpts) (strin
 		exitAfterAllTasksDeleted = true
 	}
 
-	client, err := ttrpcutil.NewClient(opts.TTRPCAddress)
-	if err != nil {
-		return "", err
-	}
+	createReq.VMID = s.vmID
+	createReq.ContainerCount = int32(containerCount)
+	createReq.ExitAfterAllTasksDeleted = exitAfterAllTasksDeleted
 
-	ttrpcClient, err := client.Client()
+	provisionMode, err := bundleDir.OCIConfig().VMProvisionMode()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get VM provision mode from OCI config: %w", err)
+	}
+	log.Infof("VM provision mode from OCI config: %s", provisionMode)
+
+	if provisionMode == firecrackeroci.ProvisionModeClone {
+		createReq.ShouldLoadSnapshot = true
+
+		memFilePath, stateFilePath, err := bundleDir.OCIConfig().SnapshotPaths()
+		if err != nil {
+			return "", fmt.Errorf("failed to get VM snapshot paths from OCI config: %w", err)
+		}
+		createReq.MemFilePath = memFilePath
+		createReq.SnapshotPath = stateFilePath
+		log.Infof("VM snapshot paths from OCI config: memory %q, state %q", memFilePath, stateFilePath)
+
+		driveOverridesJSON, err := bundleDir.OCIConfig().RawSnapshotDriveOverrides()
+		if err != nil {
+			return "", fmt.Errorf("failed to get VM snapshot drive overrides from OCI config: %w", err)
+		}
+		if driveOverridesJSON != "" {
+			var driveOverrides map[string]string
+			err = json.Unmarshal([]byte(driveOverridesJSON), &driveOverrides)
+			if err != nil {
+				return "", fmt.Errorf("failed to parse VM snapshot drive overrides JSON %q: %w", driveOverridesJSON, err)
+			}
+			var doReq = []*proto.DriveOverride{}
+			for id, path := range driveOverrides {
+				doReq = append(doReq, &proto.DriveOverride{
+					DriveID:    id,
+					PathOnHost: path,
+				})
+			}
+			createReq.DriveOverrides = doReq
+			log.Infof("VM snapshot drive overrides from OCI config: %v", doReq)
+		}
 	}
 
 	vcpuCount, memSizeMib, err := bundleDir.OCIConfig().VMSizeConfig()
@@ -387,13 +433,10 @@ func (s *service) StartShim(shimCtx context.Context, opts shim.StartOpts) (strin
 	if memSizeMib > 0 {
 		machineCfg.MemSizeMib = memSizeMib
 	}
+	createReq.MachineCfg = machineCfg
+
 	fcControlClient := fccontrolTtrpc.NewFirecrackerClient(ttrpcClient)
-	_, err = fcControlClient.CreateVM(shimCtx, &proto.CreateVMRequest{
-		VMID:                     s.vmID,
-		ExitAfterAllTasksDeleted: exitAfterAllTasksDeleted,
-		ContainerCount:           int32(containerCount),
-		MachineCfg:               machineCfg,
-	})
+	_, err = fcControlClient.CreateVM(shimCtx, createReq)
 	if err != nil {
 		errStatus, ok := status.FromError(err)
 		// ignore AlreadyExists errors, that just means the shim is already up and running
@@ -611,7 +654,19 @@ func (s *service) createVM(requestCtx context.Context, request *proto.CreateVMRe
 		}
 		s.logger.Infof("Loading snapshot from %s and %s", request.SnapshotPath, request.MemFilePath)
 		opts = append(opts, firecracker.WithSnapshot(request.MemFilePath, request.SnapshotPath,
-			func(sc *firecracker.SnapshotConfig) { sc.ResumeVM = true }))
+			func(sc *firecracker.SnapshotConfig) {
+				sc.ResumeVM = true
+			},
+			func(sc *firecracker.SnapshotConfig) {
+				var driveOverrides []*models.DriveOverride
+				for _, d := range request.DriveOverrides {
+					driveOverrides = append(driveOverrides, &models.DriveOverride{
+						DriveID:    firecracker.String(d.DriveID),
+						PathOnHost: firecracker.String(d.PathOnHost),
+					})
+				}
+				sc.DriveOverrides = driveOverrides
+			}))
 	}
 
 	// In the event that a noop jailer is used, we will pass in the shim context
