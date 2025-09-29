@@ -61,6 +61,7 @@ import (
 	"github.com/firecracker-microvm/firecracker-containerd/internal/bundle"
 	"github.com/firecracker-microvm/firecracker-containerd/internal/vm"
 	"github.com/firecracker-microvm/firecracker-containerd/proto"
+	agentTaskTtrpc "github.com/firecracker-microvm/firecracker-containerd/proto/service/agenttask/ttrpc"
 	drivemount "github.com/firecracker-microvm/firecracker-containerd/proto/service/drivemount/ttrpc"
 	fccontrolTtrpc "github.com/firecracker-microvm/firecracker-containerd/proto/service/fccontrol/ttrpc"
 	ioproxy "github.com/firecracker-microvm/firecracker-containerd/proto/service/ioproxy/ttrpc"
@@ -137,6 +138,8 @@ type service struct {
 	vmReady                  chan struct{}
 	vmStartOnce              sync.Once
 	agentClient              taskAPI.TaskService
+	agentTaskClient          agentTaskTtrpc.AgentTaskService
+	taskTranslator           vm.TaskTranslator
 	eventBridgeClient        eventbridge.Getter
 	driveMountClient         drivemount.DriveMounterService
 	ioProxyClient            ioproxy.IOProxyService
@@ -207,9 +210,10 @@ func NewService(shimCtx context.Context, _ string, remotePublisher shim.Publishe
 	}
 
 	s := &service{
-		taskManager:   vm.NewTaskManager(shimCtx, logger),
-		eventExchange: exchange.NewExchange(),
-		namespace:     namespace,
+		taskManager:    vm.NewTaskManager(shimCtx, logger),
+		taskTranslator: vm.NewTaskTranslator(),
+		eventExchange:  exchange.NewExchange(),
+		namespace:      namespace,
 
 		logger:     logger,
 		shimCtx:    shimCtx,
@@ -690,6 +694,7 @@ func (s *service) createVM(requestCtx context.Context, request *proto.CreateVMRe
 
 	rpcClient := ttrpc.NewClient(conn, ttrpc.WithOnClose(func() { _ = conn.Close() }))
 	s.agentClient = taskAPI.NewTaskClient(rpcClient)
+	s.agentTaskClient = agentTaskTtrpc.NewAgentTaskClient(rpcClient)
 	s.eventBridgeClient = eventbridge.NewGetterClient(rpcClient)
 	s.driveMountClient = drivemount.NewDriveMounterClient(rpcClient)
 	s.ioProxyClient = ioproxy.NewIOProxyClient(rpcClient)
@@ -1247,6 +1252,44 @@ func (s *service) Create(requestCtx context.Context, request *taskAPI.CreateTask
 		return nil, err
 	}
 
+	// Check if this is a clone mode container by detecting if we have existing tasks from a snapshot
+	if s.agentTaskClient != nil {
+		existingTasksResp, err := s.agentTaskClient.ListExistingTasks(requestCtx, &agentTaskTtrpc.ListExistingTasksRequest{})
+		if err != nil {
+			logger.WithError(err).Debug("failed to list existing tasks, proceeding as normal create")
+		} else if len(existingTasksResp.Tasks) > 0 {
+			// We have existing tasks, check if we should use clone mode translation
+			logger.WithField("existing_tasks", len(existingTasksResp.Tasks)).Info("detected existing tasks from snapshot")
+
+			// For clone mode, we assume the first existing task is the one we want to map to
+			// This is a simple heuristic - in the future this could be made more sophisticated
+			if len(existingTasksResp.Tasks) > 0 {
+				existingTask := existingTasksResp.Tasks[0]
+				logger.WithFields(logrus.Fields{
+					"external_task_id": request.ID,
+					"internal_task_id": existingTask.TaskId,
+					"existing_state":   existingTask.State,
+				}).Info("registering clone mode task mapping")
+
+				// Register the mapping: external ID (from containerd) -> internal ID (existing in VM)
+				s.taskTranslator.RegisterCloneMapping(request.ID, existingTask.TaskId)
+
+				// Also register the existing task with our task manager
+				err = s.taskManager.RegisterExistingTask(existingTask.TaskId)
+				if err != nil {
+					logger.WithError(err).Error("failed to register existing task")
+					return nil, fmt.Errorf("failed to register existing task %q: %w", existingTask.TaskId, err)
+				}
+
+				// Return PID 0 to follow API contract - task is "created" but not "started" yet
+				// The real PID will be returned by the Start() method
+				return &taskAPI.CreateTaskResponse{
+					Pid: 0,
+				}, nil
+			}
+		}
+	}
+
 	// We don't log request.Stdin, request.Stdout, or request.Stderr as they may contain sensitive information.
 	logger.WithFields(logrus.Fields{
 		"bundle":     request.Bundle,
@@ -1356,6 +1399,34 @@ func (s *service) Start(requestCtx context.Context, req *taskAPI.StartRequest) (
 	defer logPanicAndDie(log.G(requestCtx))
 
 	log.G(requestCtx).WithFields(logrus.Fields{"task_id": req.ID, "exec_id": req.ExecID}).Debug("start")
+
+	// Check if this is a clone mode translation
+	internalTaskID := s.taskTranslator.TranslateToInternal(req.ID)
+	if internalTaskID != req.ID {
+		log.G(requestCtx).WithFields(logrus.Fields{
+			"external_task_id": req.ID,
+			"internal_task_id": internalTaskID,
+		}).Debug("clone mode: task already running, returning existing PID")
+
+		// For clone mode, the task is already running, so we need to get its current state
+		// instead of trying to start it again
+		agent, err := s.agent()
+		if err != nil {
+			return nil, err
+		}
+
+		stateReq := &taskAPI.StateRequest{ID: internalTaskID, ExecID: req.ExecID}
+		stateResp, err := agent.State(requestCtx, stateReq)
+		if err != nil {
+			return nil, err
+		}
+
+		return &taskAPI.StartResponse{
+			Pid: stateResp.Pid,
+		}, nil
+	}
+
+	// Normal case: actually start the task
 	agent, err := s.agent()
 	if err != nil {
 		return nil, err
@@ -1373,6 +1444,20 @@ func (s *service) Delete(requestCtx context.Context, req *taskAPI.DeleteRequest)
 	logger := log.G(requestCtx).WithFields(logrus.Fields{"task_id": req.ID, "exec_id": req.ExecID})
 
 	logger.Debug("delete")
+
+	// Translate task ID for clone mode if needed
+	internalTaskID := s.taskTranslator.TranslateToInternal(req.ID)
+	if internalTaskID != req.ID {
+		logger.WithFields(logrus.Fields{
+			"external_task_id": req.ID,
+			"internal_task_id": internalTaskID,
+		}).Debug("translating task ID for clone mode")
+
+		// Create a copy of the request with the internal task ID
+		translatedReq := *req
+		translatedReq.ID = internalTaskID
+		req = &translatedReq
+	}
 
 	agent, err := s.agent()
 	if err != nil {
@@ -1426,6 +1511,20 @@ func (s *service) Exec(requestCtx context.Context, req *taskAPI.ExecProcessReque
 	defer logPanicAndDie(log.G(requestCtx))
 	logger := s.logger.WithField("task_id", req.ID).WithField("exec_id", req.ExecID)
 	logger.Debug("exec")
+
+	// Translate task ID for clone mode if needed
+	internalTaskID := s.taskTranslator.TranslateToInternal(req.ID)
+	if internalTaskID != req.ID {
+		logger.WithFields(logrus.Fields{
+			"external_task_id": req.ID,
+			"internal_task_id": internalTaskID,
+		}).Debug("translating task ID for clone mode")
+
+		// Create a copy of the request with the internal task ID
+		translatedReq := *req
+		translatedReq.ID = internalTaskID
+		req = &translatedReq
+	}
 
 	agent, err := s.agent()
 	if err != nil {
@@ -1493,6 +1592,21 @@ func (s *service) State(requestCtx context.Context, req *taskAPI.StateRequest) (
 
 	logger := log.G(requestCtx).WithFields(logrus.Fields{"task_id": req.ID, "exec_id": req.ExecID})
 	logger.Debug("state")
+
+	// Translate task ID for clone mode if needed
+	internalTaskID := s.taskTranslator.TranslateToInternal(req.ID)
+	if internalTaskID != req.ID {
+		logger.WithFields(logrus.Fields{
+			"external_task_id": req.ID,
+			"internal_task_id": internalTaskID,
+		}).Debug("translating task ID for clone mode")
+
+		// Create a copy of the request with the internal task ID
+		translatedReq := *req
+		translatedReq.ID = internalTaskID
+		req = &translatedReq
+	}
+
 	agent, err := s.agent()
 	if err != nil {
 		return nil, err
@@ -1609,6 +1723,21 @@ func (s *service) Kill(requestCtx context.Context, req *taskAPI.KillRequest) (*t
 	defer logPanicAndDie(log.G(requestCtx))
 
 	log.G(requestCtx).WithFields(logrus.Fields{"task_id": req.ID, "exec_id": req.ExecID}).Debug("kill")
+
+	// Translate task ID for clone mode if needed
+	internalTaskID := s.taskTranslator.TranslateToInternal(req.ID)
+	if internalTaskID != req.ID {
+		log.G(requestCtx).WithFields(logrus.Fields{
+			"external_task_id": req.ID,
+			"internal_task_id": internalTaskID,
+		}).Debug("translating task ID for clone mode")
+
+		// Create a copy of the request with the internal task ID
+		translatedReq := *req
+		translatedReq.ID = internalTaskID
+		req = &translatedReq
+	}
+
 	agent, err := s.agent()
 	if err != nil {
 		return nil, err
@@ -1625,6 +1754,21 @@ func (s *service) Pids(requestCtx context.Context, req *taskAPI.PidsRequest) (*t
 	defer logPanicAndDie(log.G(requestCtx))
 
 	log.G(requestCtx).WithField("task_id", req.ID).Debug("pids")
+
+	// Translate task ID for clone mode if needed
+	internalTaskID := s.taskTranslator.TranslateToInternal(req.ID)
+	if internalTaskID != req.ID {
+		log.G(requestCtx).WithFields(logrus.Fields{
+			"external_task_id": req.ID,
+			"internal_task_id": internalTaskID,
+		}).Debug("translating task ID for clone mode")
+
+		// Create a copy of the request with the internal task ID
+		translatedReq := *req
+		translatedReq.ID = internalTaskID
+		req = &translatedReq
+	}
+
 	agent, err := s.agent()
 	if err != nil {
 		return nil, err

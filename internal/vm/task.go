@@ -68,6 +68,10 @@ type TaskManager interface {
 	// IsProxyOpen returns true if the given task or exec has an IO proxy
 	// which hasn't been closed.
 	IsProxyOpen(string, string) (bool, error)
+
+	// RegisterExistingTask registers a pre-existing task (from snapshot) with the TaskManager
+	// This allows the TaskManager to track tasks that were already running before it started
+	RegisterExistingTask(taskID string) error
 }
 
 // NewTaskManager initializes a new TaskManager
@@ -170,6 +174,37 @@ func (m *taskManager) ShutdownIfEmpty() bool {
 	}
 
 	return false
+}
+
+func (m *taskManager) RegisterExistingTask(taskID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.isShutdown {
+		return fmt.Errorf("cannot register existing task %q after shutdown", taskID)
+	}
+
+	// Create task entry if it doesn't exist
+	if _, exists := m.tasks[taskID]; !exists {
+		m.tasks[taskID] = make(map[string]*vmProc)
+	}
+
+	// Create a vmProc for the existing task (empty execID for main process)
+	execID := ""
+	if _, exists := m.tasks[taskID][execID]; !exists {
+		proc := &vmProc{
+			taskID: taskID,
+			execID: execID,
+			logger: m.logger.WithField("TaskID", taskID).WithField("ExecID", execID),
+			// Note: ctx, cancel, and proxy are not set for existing tasks initially
+			// They will be set when IO operations are needed
+		}
+		m.tasks[taskID][execID] = proc
+
+		proc.logger.Info("registered existing task from snapshot")
+	}
+
+	return nil
 }
 
 func (m *taskManager) CreateTask(

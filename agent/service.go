@@ -16,10 +16,13 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"runtime/debug"
 	"strconv"
+	"strings"
 	"sync"
 
 	taskAPI "github.com/containerd/containerd/api/runtime/task/v2"
@@ -37,6 +40,7 @@ import (
 	"github.com/firecracker-microvm/firecracker-containerd/internal/bundle"
 	"github.com/firecracker-microvm/firecracker-containerd/internal/vm"
 	"github.com/firecracker-microvm/firecracker-containerd/proto"
+	agentTaskTtrpc "github.com/firecracker-microvm/firecracker-containerd/proto/service/agenttask/ttrpc"
 )
 
 // TaskService represents inner shim wrapper over runc in order to:
@@ -704,4 +708,67 @@ func (ts *TaskService) Shutdown(requestCtx context.Context, req *taskAPI.Shutdow
 
 	logger.Debug("going to gracefully shutdown agent")
 	return &types.Empty{}, nil
+}
+
+// ListExistingTasks discovers existing containers from runc and returns their information
+func (ts *TaskService) ListExistingTasks(requestCtx context.Context, req *agentTaskTtrpc.ListExistingTasksRequest) (*agentTaskTtrpc.ListExistingTasksResponse, error) {
+	logger := log.G(requestCtx).WithField("name", "ListExistingTasks")
+	defer logPanicAndDie(logger)
+
+	logger.Debug("discovering existing tasks")
+
+	// Use runc list command to discover existing containers with the default containerd root
+	cmd := exec.CommandContext(requestCtx, "runc", "--root", "/run/containerd/runc/default", "list", "--format", "json")
+	output, err := cmd.Output()
+	if err != nil {
+		logger.WithError(err).Error("failed to list containers with runc")
+		return nil, fmt.Errorf("failed to list existing containers: %w", err)
+	}
+
+	// Parse the JSON output from runc list
+	var containers []struct {
+		ID     string `json:"id"`
+		Status string `json:"status"`
+		PID    int    `json:"pid"`
+		Bundle string `json:"bundle"`
+	}
+
+	if len(output) > 0 {
+		if err := json.Unmarshal(output, &containers); err != nil {
+			logger.WithError(err).Error("failed to parse runc list output")
+			return nil, fmt.Errorf("failed to parse runc list output: %w", err)
+		}
+	}
+
+	// Convert to our response format and register with TaskManager
+	var tasks []*agentTaskTtrpc.ExistingTaskInfo
+	for _, container := range containers {
+		// Filter by state if specified
+		if req.StateFilter != "" && !strings.Contains(strings.ToLower(container.Status), strings.ToLower(req.StateFilter)) {
+			continue
+		}
+
+		taskInfo := &agentTaskTtrpc.ExistingTaskInfo{
+			TaskId: container.ID,
+			State:  container.Status,
+			Pid:    uint32(container.PID),
+			Metadata: map[string]string{
+				"bundle": container.Bundle,
+			},
+		}
+		tasks = append(tasks, taskInfo)
+
+		// Register the existing task with TaskManager so it can be managed
+		if err := ts.taskManager.RegisterExistingTask(container.ID); err != nil {
+			logger.WithError(err).WithField("task_id", container.ID).Warn("failed to register existing task")
+		} else {
+			logger.WithField("task_id", container.ID).Info("registered existing task")
+		}
+	}
+
+	logger.WithField("task_count", len(tasks)).Info("discovered existing tasks")
+
+	return &agentTaskTtrpc.ListExistingTasksResponse{
+		Tasks: tasks,
+	}, nil
 }

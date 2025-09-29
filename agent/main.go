@@ -36,6 +36,7 @@ import (
 	"github.com/firecracker-microvm/firecracker-containerd/eventbridge"
 	"github.com/firecracker-microvm/firecracker-containerd/internal/event"
 
+	agentTaskTtrpc "github.com/firecracker-microvm/firecracker-containerd/proto/service/agenttask/ttrpc"
 	drivemount "github.com/firecracker-microvm/firecracker-containerd/proto/service/drivemount/ttrpc"
 	ioproxy "github.com/firecracker-microvm/firecracker-containerd/proto/service/ioproxy/ttrpc"
 )
@@ -105,6 +106,9 @@ func main() {
 		log.G(shimCtx).WithError(err).Fatal("failed to create task service")
 	}
 	taskAPI.RegisterTaskService(server, taskService)
+
+	// Register AgentTask service for task discovery
+	agentTaskTtrpc.RegisterAgentTaskService(server, taskService)
 
 	dh, err := newDriveHandler(blockPath, drivePath)
 	if err != nil {

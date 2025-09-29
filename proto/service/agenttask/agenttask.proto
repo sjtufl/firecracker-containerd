@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+option go_package = ".;agenttask";
+
+service AgentTask {
+    // Lists existing tasks discovered from container runtime (e.g., runc)
+    rpc ListExistingTasks(ListExistingTasksRequest) returns (ListExistingTasksResponse);
+}
+
+message ListExistingTasksRequest {
+    // Optional filter by task state (running, stopped, etc.)
+    string state_filter = 1;
+}
+
+message ExistingTaskInfo {
+    // Task ID as known by the container runtime
+    string task_id = 1;
+    // Current state of the task (running, stopped, etc.)  
+    string state = 2;
+    // Process ID of the main container process
+    uint32 pid = 3;
+    // Additional metadata from container runtime
+    map<string, string> metadata = 4;
+}
+
+message ListExistingTasksResponse {
+    // List of existing tasks discovered from container runtime
+    repeated ExistingTaskInfo tasks = 1;
+}
