@@ -35,7 +35,7 @@ require (
 )
 
 replace (
-	github.com/containerd/containerd => github.com/sjtufl/containerd v0.0.0-20250925150551-fb5756fbbd11
+	github.com/containerd/containerd => github.com/sjtufl/containerd v0.0.0-20250926030621-ba5b8d8e9446
 	github.com/firecracker-microvm/firecracker-go-sdk => github.com/sjtufl/firecracker-go-sdk v0.0.0-20250929070449-9ff9d867733b
 )
 

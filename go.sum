@@ -2189,8 +2189,8 @@ github.com/sirupsen/logrus v1.8.1/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic
 github.com/sirupsen/logrus v1.9.0/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
 github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ=
 github.com/sirupsen/logrus v1.9.3/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
-github.com/sjtufl/containerd v0.0.0-20250925150551-fb5756fbbd11 h1:f9UZCU0WVKplK1d3b53dksRqNlk/2A+adrG5yX3NXmA=
-github.com/sjtufl/containerd v0.0.0-20250925150551-fb5756fbbd11/go.mod h1:azUkWcOvHrWvaiUjSQH0fjzuHIwSPg1WL5PshGP4Szs=
+github.com/sjtufl/containerd v0.0.0-20250926030621-ba5b8d8e9446 h1:cuxUNhRde2rnAXP3HqC/2h4mrJeze+q+s/9Rsf9hr0w=
+github.com/sjtufl/containerd v0.0.0-20250926030621-ba5b8d8e9446/go.mod h1:azUkWcOvHrWvaiUjSQH0fjzuHIwSPg1WL5PshGP4Szs=
 github.com/sjtufl/firecracker-go-sdk v0.0.0-20250929070449-9ff9d867733b h1:7YOoM6WnqWOn0MWmJihhxxKacAZGzs+rQXJroiLpEe4=
 github.com/sjtufl/firecracker-go-sdk v0.0.0-20250929070449-9ff9d867733b/go.mod h1:iXd7gqdwzvhB4VbNVMb70g/IY04fOuQbbBGM+PQEkgo=
 github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d/go.mod h1:OnSkiWE9lh6wB0YB77sQom3nweQdgAjqCqsofrRNTgc=

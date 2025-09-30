@@ -17,7 +17,8 @@ WORKDIRLOC := $(shell readlink -f $(WORKDIR))
 IMAGE_DIRS := /dev /bin /etc /etc/init.d /tmp /var /run /proc /sys /container/rootfs /agent /rom /overlay
 DIRS       := $(foreach dir,$(IMAGE_DIRS),"$(WORKDIR)$(dir)")
 DEBMIRROR  ?= http://deb.debian.org/debian
-PACKAGES   := udev systemd systemd-sysv procps libseccomp2 haveged openssh-server
+PACKAGES   := udev systemd systemd-sysv procps libseccomp2 haveged openssh-server \
+              iproute2 net-tools curl wget htop strace less vim-tiny dnsutils iputils-ping
 
 COMMA      := ,
 EMPTY      :=
