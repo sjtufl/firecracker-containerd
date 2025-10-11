@@ -1574,6 +1574,21 @@ func (s *service) ResizePty(requestCtx context.Context, req *taskAPI.ResizePtyRe
 	defer logPanicAndDie(log.G(requestCtx))
 
 	log.G(requestCtx).WithFields(logrus.Fields{"task_id": req.ID, "exec_id": req.ExecID}).Debug("resize_pty")
+
+	// Translate task ID for clone mode if needed
+	internalTaskID := s.taskTranslator.TranslateToInternal(req.ID)
+	if internalTaskID != req.ID {
+		log.G(requestCtx).WithFields(logrus.Fields{
+			"external_task_id": req.ID,
+			"internal_task_id": internalTaskID,
+		}).Debug("translating task ID for clone mode")
+
+		// Create a copy of the request with the internal task ID
+		translatedReq := *req
+		translatedReq.ID = internalTaskID
+		req = &translatedReq
+	}
+
 	agent, err := s.agent()
 	if err != nil {
 		return nil, err
@@ -1934,6 +1949,20 @@ func (s *service) Stats(requestCtx context.Context, req *taskAPI.StatsRequest) (
 	defer logPanicAndDie(log.G(requestCtx))
 	log.G(requestCtx).WithField("task_id", req.ID).Debug("stats")
 
+	// Translate task ID for clone mode if needed
+	internalTaskID := s.taskTranslator.TranslateToInternal(req.ID)
+	if internalTaskID != req.ID {
+		log.G(requestCtx).WithFields(logrus.Fields{
+			"external_task_id": req.ID,
+			"internal_task_id": internalTaskID,
+		}).Debug("translating task ID for clone mode")
+
+		// Create a copy of the request with the internal task ID
+		translatedReq := *req
+		translatedReq.ID = internalTaskID
+		req = &translatedReq
+	}
+
 	agent, err := s.agent()
 	if err != nil {
 		return nil, err
@@ -1967,6 +1996,20 @@ func (s *service) Update(requestCtx context.Context, req *taskAPI.UpdateTaskRequ
 func (s *service) Wait(requestCtx context.Context, req *taskAPI.WaitRequest) (*taskAPI.WaitResponse, error) {
 	defer logPanicAndDie(log.G(requestCtx))
 	log.G(requestCtx).WithFields(logrus.Fields{"task_id": req.ID, "exec_id": req.ExecID}).Debug("wait")
+
+	// Translate task ID for clone mode if needed
+	internalTaskID := s.taskTranslator.TranslateToInternal(req.ID)
+	if internalTaskID != req.ID {
+		log.G(requestCtx).WithFields(logrus.Fields{
+			"external_task_id": req.ID,
+			"internal_task_id": internalTaskID,
+		}).Debug("translating task ID for clone mode")
+
+		// Create a copy of the request with the internal task ID
+		translatedReq := *req
+		translatedReq.ID = internalTaskID
+		req = &translatedReq
+	}
 
 	agent, err := s.agent()
 	if err != nil {
