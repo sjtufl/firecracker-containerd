@@ -219,3 +219,25 @@ message CreateSnapshotRequest {
 
     string SnapshotPath = 3;
 }
+
+message FlushCacheRequest {
+    // VM identifier
+    string VMID = 1;
+    
+    // Optional timeout in seconds for the flush operation (0 means default timeout)
+    int32 timeout_seconds = 2;
+    
+    // Optional specific paths to sync (if empty, syncs all filesystems)
+    repeated string paths = 3;
+}
+
+message FlushCacheResponse {
+    // Whether the flush operation was successful
+    bool success = 1;
+    
+    // Error message if the operation failed
+    string error = 2;
+    
+    // Duration of the flush operation in milliseconds
+    int64 duration_ms = 3;
+}

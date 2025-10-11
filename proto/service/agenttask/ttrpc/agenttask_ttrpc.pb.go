@@ -9,6 +9,7 @@ import (
 
 type AgentTaskService interface {
 	ListExistingTasks(context.Context, *ListExistingTasksRequest) (*ListExistingTasksResponse, error)
+	ExecuteCommand(context.Context, *ExecuteCommandRequest) (*ExecuteCommandResponse, error)
 }
 
 func RegisterAgentTaskService(srv *ttrpc.Server, svc AgentTaskService) {
@@ -20,6 +21,13 @@ func RegisterAgentTaskService(srv *ttrpc.Server, svc AgentTaskService) {
 					return nil, err
 				}
 				return svc.ListExistingTasks(ctx, &req)
+			},
+			"ExecuteCommand": func(ctx context.Context, unmarshal func(interface{}) error) (interface{}, error) {
+				var req ExecuteCommandRequest
+				if err := unmarshal(&req); err != nil {
+					return nil, err
+				}
+				return svc.ExecuteCommand(ctx, &req)
 			},
 		},
 	})
@@ -38,6 +46,14 @@ func NewAgentTaskClient(client *ttrpc.Client) AgentTaskService {
 func (c *agenttaskClient) ListExistingTasks(ctx context.Context, req *ListExistingTasksRequest) (*ListExistingTasksResponse, error) {
 	var resp ListExistingTasksResponse
 	if err := c.client.Call(ctx, "AgentTask", "ListExistingTasks", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (c *agenttaskClient) ExecuteCommand(ctx context.Context, req *ExecuteCommandRequest) (*ExecuteCommandResponse, error) {
+	var resp ExecuteCommandResponse
+	if err := c.client.Call(ctx, "AgentTask", "ExecuteCommand", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil

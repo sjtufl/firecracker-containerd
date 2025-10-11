@@ -28,7 +28,7 @@ var file_fccontrol_proto_rawDesc = []byte{
 	0x6f, 0x1a, 0x1b, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62,
 	0x75, 0x66, 0x2f, 0x65, 0x6d, 0x70, 0x74, 0x79, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x11,
 	0x66, 0x69, 0x72, 0x65, 0x63, 0x72, 0x61, 0x63, 0x6b, 0x65, 0x72, 0x2e, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x32, 0xaf, 0x06, 0x0a, 0x0b, 0x46, 0x69, 0x72, 0x65, 0x63, 0x72, 0x61, 0x63, 0x6b, 0x65,
+	0x6f, 0x32, 0xe6, 0x06, 0x0a, 0x0b, 0x46, 0x69, 0x72, 0x65, 0x63, 0x72, 0x61, 0x63, 0x6b, 0x65,
 	0x72, 0x12, 0x2f, 0x0a, 0x08, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x56, 0x4d, 0x12, 0x10, 0x2e,
 	0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x56, 0x4d, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
 	0x11, 0x2e, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x56, 0x4d, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
@@ -79,8 +79,12 @@ var file_fccontrol_proto_rawDesc = []byte{
 	0x68, 0x6f, 0x74, 0x12, 0x16, 0x2e, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x53, 0x6e, 0x61, 0x70,
 	0x73, 0x68, 0x6f, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x16, 0x2e, 0x67, 0x6f,
 	0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x45, 0x6d,
-	0x70, 0x74, 0x79, 0x42, 0x0d, 0x5a, 0x0b, 0x2e, 0x3b, 0x66, 0x63, 0x63, 0x6f, 0x6e, 0x74, 0x72,
-	0x6f, 0x6c, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x70, 0x74, 0x79, 0x12, 0x35, 0x0a, 0x0a, 0x46, 0x6c, 0x75, 0x73, 0x68, 0x43, 0x61, 0x63, 0x68,
+	0x65, 0x12, 0x12, 0x2e, 0x46, 0x6c, 0x75, 0x73, 0x68, 0x43, 0x61, 0x63, 0x68, 0x65, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x13, 0x2e, 0x46, 0x6c, 0x75, 0x73, 0x68, 0x43, 0x61, 0x63,
+	0x68, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x0d, 0x5a, 0x0b, 0x2e, 0x3b,
+	0x66, 0x63, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x33,
 }
 
 var file_fccontrol_proto_goTypes = []interface{}{
@@ -97,12 +101,14 @@ var file_fccontrol_proto_goTypes = []interface{}{
 	(*proto.GetBalloonStatsRequest)(nil),    // 10: GetBalloonStatsRequest
 	(*proto.UpdateBalloonStatsRequest)(nil), // 11: UpdateBalloonStatsRequest
 	(*proto.CreateSnapshotRequest)(nil),     // 12: CreateSnapshotRequest
-	(*proto.CreateVMResponse)(nil),          // 13: CreateVMResponse
-	(*empty.Empty)(nil),                     // 14: google.protobuf.Empty
-	(*proto.GetVMInfoResponse)(nil),         // 15: GetVMInfoResponse
-	(*proto.GetVMMetadataResponse)(nil),     // 16: GetVMMetadataResponse
-	(*proto.GetBalloonConfigResponse)(nil),  // 17: GetBalloonConfigResponse
-	(*proto.GetBalloonStatsResponse)(nil),   // 18: GetBalloonStatsResponse
+	(*proto.FlushCacheRequest)(nil),         // 13: FlushCacheRequest
+	(*proto.CreateVMResponse)(nil),          // 14: CreateVMResponse
+	(*empty.Empty)(nil),                     // 15: google.protobuf.Empty
+	(*proto.GetVMInfoResponse)(nil),         // 16: GetVMInfoResponse
+	(*proto.GetVMMetadataResponse)(nil),     // 17: GetVMMetadataResponse
+	(*proto.GetBalloonConfigResponse)(nil),  // 18: GetBalloonConfigResponse
+	(*proto.GetBalloonStatsResponse)(nil),   // 19: GetBalloonStatsResponse
+	(*proto.FlushCacheResponse)(nil),        // 20: FlushCacheResponse
 }
 var file_fccontrol_proto_depIdxs = []int32{
 	0,  // 0: Firecracker.CreateVM:input_type -> CreateVMRequest
@@ -118,21 +124,23 @@ var file_fccontrol_proto_depIdxs = []int32{
 	10, // 10: Firecracker.GetBalloonStats:input_type -> GetBalloonStatsRequest
 	11, // 11: Firecracker.UpdateBalloonStats:input_type -> UpdateBalloonStatsRequest
 	12, // 12: Firecracker.CreateSnapshot:input_type -> CreateSnapshotRequest
-	13, // 13: Firecracker.CreateVM:output_type -> CreateVMResponse
-	14, // 14: Firecracker.PauseVM:output_type -> google.protobuf.Empty
-	14, // 15: Firecracker.ResumeVM:output_type -> google.protobuf.Empty
-	14, // 16: Firecracker.StopVM:output_type -> google.protobuf.Empty
-	15, // 17: Firecracker.GetVMInfo:output_type -> GetVMInfoResponse
-	14, // 18: Firecracker.SetVMMetadata:output_type -> google.protobuf.Empty
-	14, // 19: Firecracker.UpdateVMMetadata:output_type -> google.protobuf.Empty
-	16, // 20: Firecracker.GetVMMetadata:output_type -> GetVMMetadataResponse
-	17, // 21: Firecracker.GetBalloonConfig:output_type -> GetBalloonConfigResponse
-	14, // 22: Firecracker.UpdateBalloon:output_type -> google.protobuf.Empty
-	18, // 23: Firecracker.GetBalloonStats:output_type -> GetBalloonStatsResponse
-	14, // 24: Firecracker.UpdateBalloonStats:output_type -> google.protobuf.Empty
-	14, // 25: Firecracker.CreateSnapshot:output_type -> google.protobuf.Empty
-	13, // [13:26] is the sub-list for method output_type
-	0,  // [0:13] is the sub-list for method input_type
+	13, // 13: Firecracker.FlushCache:input_type -> FlushCacheRequest
+	14, // 14: Firecracker.CreateVM:output_type -> CreateVMResponse
+	15, // 15: Firecracker.PauseVM:output_type -> google.protobuf.Empty
+	15, // 16: Firecracker.ResumeVM:output_type -> google.protobuf.Empty
+	15, // 17: Firecracker.StopVM:output_type -> google.protobuf.Empty
+	16, // 18: Firecracker.GetVMInfo:output_type -> GetVMInfoResponse
+	15, // 19: Firecracker.SetVMMetadata:output_type -> google.protobuf.Empty
+	15, // 20: Firecracker.UpdateVMMetadata:output_type -> google.protobuf.Empty
+	17, // 21: Firecracker.GetVMMetadata:output_type -> GetVMMetadataResponse
+	18, // 22: Firecracker.GetBalloonConfig:output_type -> GetBalloonConfigResponse
+	15, // 23: Firecracker.UpdateBalloon:output_type -> google.protobuf.Empty
+	19, // 24: Firecracker.GetBalloonStats:output_type -> GetBalloonStatsResponse
+	15, // 25: Firecracker.UpdateBalloonStats:output_type -> google.protobuf.Empty
+	15, // 26: Firecracker.CreateSnapshot:output_type -> google.protobuf.Empty
+	20, // 27: Firecracker.FlushCache:output_type -> FlushCacheResponse
+	14, // [14:28] is the sub-list for method output_type
+	0,  // [0:14] is the sub-list for method input_type
 	0,  // [0:0] is the sub-list for extension type_name
 	0,  // [0:0] is the sub-list for extension extendee
 	0,  // [0:0] is the sub-list for field type_name

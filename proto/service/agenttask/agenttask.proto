@@ -5,6 +5,9 @@ option go_package = ".;agenttask";
 service AgentTask {
     // Lists existing tasks discovered from container runtime (e.g., runc)
     rpc ListExistingTasks(ListExistingTasksRequest) returns (ListExistingTasksResponse);
+    
+    // Executes a command inside the microVM and returns the result
+    rpc ExecuteCommand(ExecuteCommandRequest) returns (ExecuteCommandResponse);
 }
 
 message ListExistingTasksRequest {
@@ -26,4 +29,30 @@ message ExistingTaskInfo {
 message ListExistingTasksResponse {
     // List of existing tasks discovered from container runtime
     repeated ExistingTaskInfo tasks = 1;
+}
+
+message ExecuteCommandRequest {
+    // The command to execute
+    string command = 1;
+    // Arguments for the command
+    repeated string args = 2;
+    // Optional working directory for the command
+    string working_dir = 3;
+    // Optional environment variables
+    map<string, string> env = 4;
+    // Optional timeout in seconds (0 means no timeout)
+    int32 timeout_seconds = 5;
+}
+
+message ExecuteCommandResponse {
+    // Exit code of the executed command
+    int32 exit_code = 1;
+    // Standard output from the command
+    string stdout = 2;
+    // Standard error from the command
+    string stderr = 3;
+    // Whether the command executed successfully (exit code 0)
+    bool success = 4;
+    // Error message if execution failed
+    string error = 5;
 }

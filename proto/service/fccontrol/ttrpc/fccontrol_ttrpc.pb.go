@@ -4,7 +4,6 @@ package fccontrol
 
 import (
 	context "context"
-
 	ttrpc "github.com/containerd/ttrpc"
 	proto "github.com/firecracker-microvm/firecracker-containerd/proto"
 	empty "github.com/golang/protobuf/ptypes/empty"
@@ -24,6 +23,7 @@ type FirecrackerService interface {
 	GetBalloonStats(context.Context, *proto.GetBalloonStatsRequest) (*proto.GetBalloonStatsResponse, error)
 	UpdateBalloonStats(context.Context, *proto.UpdateBalloonStatsRequest) (*empty.Empty, error)
 	CreateSnapshot(context.Context, *proto.CreateSnapshotRequest) (*empty.Empty, error)
+	FlushCache(context.Context, *proto.FlushCacheRequest) (*proto.FlushCacheResponse, error)
 }
 
 func RegisterFirecrackerService(srv *ttrpc.Server, svc FirecrackerService) {
@@ -119,6 +119,13 @@ func RegisterFirecrackerService(srv *ttrpc.Server, svc FirecrackerService) {
 					return nil, err
 				}
 				return svc.CreateSnapshot(ctx, &req)
+			},
+			"FlushCache": func(ctx context.Context, unmarshal func(interface{}) error) (interface{}, error) {
+				var req proto.FlushCacheRequest
+				if err := unmarshal(&req); err != nil {
+					return nil, err
+				}
+				return svc.FlushCache(ctx, &req)
 			},
 		},
 	})
@@ -233,6 +240,14 @@ func (c *firecrackerClient) UpdateBalloonStats(ctx context.Context, req *proto.U
 func (c *firecrackerClient) CreateSnapshot(ctx context.Context, req *proto.CreateSnapshotRequest) (*empty.Empty, error) {
 	var resp empty.Empty
 	if err := c.client.Call(ctx, "Firecracker", "CreateSnapshot", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (c *firecrackerClient) FlushCache(ctx context.Context, req *proto.FlushCacheRequest) (*proto.FlushCacheResponse, error) {
+	var resp proto.FlushCacheResponse
+	if err := c.client.Call(ctx, "Firecracker", "FlushCache", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil

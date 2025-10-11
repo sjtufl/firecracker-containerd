@@ -1026,6 +1026,88 @@ func (s *service) CreateSnapshot(ctx context.Context, req *proto.CreateSnapshotR
 	return &types.Empty{}, nil
 }
 
+func (s *service) FlushCache(ctx context.Context, req *proto.FlushCacheRequest) (*proto.FlushCacheResponse, error) {
+	defer logPanicAndDie(s.logger)
+
+	logger := s.logger.WithField("vmID", s.vmID)
+
+	// Wait for VM to be ready
+	err := s.waitVMReady()
+	if err != nil {
+		logger.WithError(err).Error("VM not ready for cache flush")
+		return &proto.FlushCacheResponse{
+			Success: false,
+			Error:   fmt.Sprintf("VM not ready: %v", err),
+		}, nil
+	}
+
+	// Ensure agent task client is available
+	if s.agentTaskClient == nil {
+		err := fmt.Errorf("agent task client not available")
+		logger.WithError(err).Error("no agent task client")
+		return &proto.FlushCacheResponse{
+			Success: false,
+			Error:   err.Error(),
+		}, nil
+	}
+
+	startTime := time.Now()
+
+	// Build sync command - sync command flushes all page caches
+	syncCmd := "sync"
+	var args []string
+
+	// If specific paths are provided, use sync on each path
+	if len(req.Paths) > 0 {
+		for _, path := range req.Paths {
+			args = append(args, path)
+		}
+	}
+
+	// Execute sync command via agent
+	executeReq := &agentTaskTtrpc.ExecuteCommandRequest{
+		Command: syncCmd,
+		Args:    args,
+	}
+
+	// Set timeout if specified
+	if req.TimeoutSeconds > 0 {
+		executeReq.TimeoutSeconds = req.TimeoutSeconds
+	}
+
+	logger.WithField("command", syncCmd).WithField("args", args).Debug("executing cache flush command")
+
+	executeResp, err := s.agentTaskClient.ExecuteCommand(ctx, executeReq)
+	if err != nil {
+		logger.WithError(err).Error("failed to execute cache flush command")
+		return &proto.FlushCacheResponse{
+			Success:    false,
+			Error:      fmt.Sprintf("failed to execute sync command: %v", err),
+			DurationMs: time.Since(startTime).Milliseconds(),
+		}, nil
+	}
+
+	duration := time.Since(startTime).Milliseconds()
+
+	if !executeResp.Success {
+		logger.WithField("exitCode", executeResp.ExitCode).
+			WithField("stderr", executeResp.Stderr).
+			Error("cache flush command failed")
+		return &proto.FlushCacheResponse{
+			Success:    false,
+			Error:      fmt.Sprintf("sync command failed with exit code %d: %s", executeResp.ExitCode, executeResp.Stderr),
+			DurationMs: duration,
+		}, nil
+	}
+
+	logger.WithField("duration_ms", duration).Info("cache flush completed successfully")
+
+	return &proto.FlushCacheResponse{
+		Success:    true,
+		DurationMs: duration,
+	}, nil
+}
+
 func (s *service) buildVMConfiguration(req *proto.CreateVMRequest) (*firecracker.Config, error) {
 	for _, driveMount := range req.DriveMounts {
 		// Verify the request specified an absolute path for the source/dest of drives.

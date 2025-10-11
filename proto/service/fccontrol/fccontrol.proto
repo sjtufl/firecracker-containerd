@@ -45,4 +45,7 @@ service Firecracker {
 
     // Creates a full snapshot for a VM
     rpc CreateSnapshot(CreateSnapshotRequest) returns(google.protobuf.Empty);
+
+    // Flushes page caches in the microVM to ensure data is synced to storage
+    rpc FlushCache(FlushCacheRequest) returns(FlushCacheResponse);
 }

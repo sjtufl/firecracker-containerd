@@ -131,3 +131,8 @@ func (s *service) CreateSnapshot(ctx context.Context, req *proto.CreateSnapshotR
 	log.G(ctx).Debugf("create snapshot request: %+v", req)
 	return s.local.CreateSnapshot(ctx, req)
 }
+
+func (s *service) FlushCache(ctx context.Context, req *proto.FlushCacheRequest) (*proto.FlushCacheResponse, error) {
+	log.G(ctx).Debugf("flush cache request: %+v", req)
+	return s.local.FlushCache(ctx, req)
+}

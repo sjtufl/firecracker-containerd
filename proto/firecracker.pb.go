@@ -1427,6 +1427,138 @@ func (x *CreateSnapshotRequest) GetSnapshotPath() string {
 	return ""
 }
 
+type FlushCacheRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// VM identifier
+	VMID string `protobuf:"bytes,1,opt,name=VMID,proto3" json:"VMID,omitempty"`
+	// Optional timeout in seconds for the flush operation (0 means default timeout)
+	TimeoutSeconds int32 `protobuf:"varint,2,opt,name=timeout_seconds,json=timeoutSeconds,proto3" json:"timeout_seconds,omitempty"`
+	// Optional specific paths to sync (if empty, syncs all filesystems)
+	Paths []string `protobuf:"bytes,3,rep,name=paths,proto3" json:"paths,omitempty"`
+}
+
+func (x *FlushCacheRequest) Reset() {
+	*x = FlushCacheRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_firecracker_proto_msgTypes[19]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *FlushCacheRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FlushCacheRequest) ProtoMessage() {}
+
+func (x *FlushCacheRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_firecracker_proto_msgTypes[19]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FlushCacheRequest.ProtoReflect.Descriptor instead.
+func (*FlushCacheRequest) Descriptor() ([]byte, []int) {
+	return file_firecracker_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *FlushCacheRequest) GetVMID() string {
+	if x != nil {
+		return x.VMID
+	}
+	return ""
+}
+
+func (x *FlushCacheRequest) GetTimeoutSeconds() int32 {
+	if x != nil {
+		return x.TimeoutSeconds
+	}
+	return 0
+}
+
+func (x *FlushCacheRequest) GetPaths() []string {
+	if x != nil {
+		return x.Paths
+	}
+	return nil
+}
+
+type FlushCacheResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// Whether the flush operation was successful
+	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	// Error message if the operation failed
+	Error string `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	// Duration of the flush operation in milliseconds
+	DurationMs int64 `protobuf:"varint,3,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
+}
+
+func (x *FlushCacheResponse) Reset() {
+	*x = FlushCacheResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_firecracker_proto_msgTypes[20]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *FlushCacheResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FlushCacheResponse) ProtoMessage() {}
+
+func (x *FlushCacheResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_firecracker_proto_msgTypes[20]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FlushCacheResponse.ProtoReflect.Descriptor instead.
+func (*FlushCacheResponse) Descriptor() ([]byte, []int) {
+	return file_firecracker_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *FlushCacheResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *FlushCacheResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *FlushCacheResponse) GetDurationMs() int64 {
+	if x != nil {
+		return x.DurationMs
+	}
+	return 0
+}
+
 var File_firecracker_proto protoreflect.FileDescriptor
 
 var file_firecracker_proto_rawDesc = []byte{
@@ -1613,10 +1745,23 @@ var file_firecracker_proto_rawDesc = []byte{
 	0x28, 0x09, 0x52, 0x0b, 0x4d, 0x65, 0x6d, 0x46, 0x69, 0x6c, 0x65, 0x50, 0x61, 0x74, 0x68, 0x12,
 	0x22, 0x0a, 0x0c, 0x53, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x50, 0x61, 0x74, 0x68, 0x18,
 	0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x53, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x50,
-	0x61, 0x74, 0x68, 0x2a, 0x27, 0x0a, 0x11, 0x44, 0x72, 0x69, 0x76, 0x65, 0x45, 0x78, 0x70, 0x6f,
-	0x73, 0x65, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x12, 0x08, 0x0a, 0x04, 0x43, 0x4f, 0x50, 0x59,
-	0x10, 0x00, 0x12, 0x08, 0x0a, 0x04, 0x42, 0x49, 0x4e, 0x44, 0x10, 0x01, 0x42, 0x09, 0x5a, 0x07,
-	0x2e, 0x3b, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x61, 0x74, 0x68, 0x22, 0x66, 0x0a, 0x11, 0x46, 0x6c, 0x75, 0x73, 0x68, 0x43, 0x61, 0x63, 0x68,
+	0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x56, 0x4d, 0x49, 0x44,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x56, 0x4d, 0x49, 0x44, 0x12, 0x27, 0x0a, 0x0f,
+	0x74, 0x69, 0x6d, 0x65, 0x6f, 0x75, 0x74, 0x5f, 0x73, 0x65, 0x63, 0x6f, 0x6e, 0x64, 0x73, 0x18,
+	0x02, 0x20, 0x01, 0x28, 0x05, 0x52, 0x0e, 0x74, 0x69, 0x6d, 0x65, 0x6f, 0x75, 0x74, 0x53, 0x65,
+	0x63, 0x6f, 0x6e, 0x64, 0x73, 0x12, 0x14, 0x0a, 0x05, 0x70, 0x61, 0x74, 0x68, 0x73, 0x18, 0x03,
+	0x20, 0x03, 0x28, 0x09, 0x52, 0x05, 0x70, 0x61, 0x74, 0x68, 0x73, 0x22, 0x65, 0x0a, 0x12, 0x46,
+	0x6c, 0x75, 0x73, 0x68, 0x43, 0x61, 0x63, 0x68, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x12, 0x18, 0x0a, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x08, 0x52, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x12, 0x14, 0x0a, 0x05, 0x65,
+	0x72, 0x72, 0x6f, 0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x65, 0x72, 0x72, 0x6f,
+	0x72, 0x12, 0x1f, 0x0a, 0x0b, 0x64, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x6d, 0x73,
+	0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0a, 0x64, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0x4d, 0x73, 0x2a, 0x27, 0x0a, 0x11, 0x44, 0x72, 0x69, 0x76, 0x65, 0x45, 0x78, 0x70, 0x6f, 0x73,
+	0x65, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x12, 0x08, 0x0a, 0x04, 0x43, 0x4f, 0x50, 0x59, 0x10,
+	0x00, 0x12, 0x08, 0x0a, 0x04, 0x42, 0x49, 0x4e, 0x44, 0x10, 0x01, 0x42, 0x09, 0x5a, 0x07, 0x2e,
+	0x3b, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1632,7 +1777,7 @@ func file_firecracker_proto_rawDescGZIP() []byte {
 }
 
 var file_firecracker_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_firecracker_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_firecracker_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_firecracker_proto_goTypes = []interface{}{
 	(DriveExposePolicy)(0),                  // 0: DriveExposePolicy
 	(*CreateVMRequest)(nil),                 // 1: CreateVMRequest
@@ -1654,23 +1799,25 @@ var file_firecracker_proto_goTypes = []interface{}{
 	(*GetBalloonStatsResponse)(nil),         // 17: GetBalloonStatsResponse
 	(*UpdateBalloonStatsRequest)(nil),       // 18: UpdateBalloonStatsRequest
 	(*CreateSnapshotRequest)(nil),           // 19: CreateSnapshotRequest
-	(*FirecrackerMachineConfiguration)(nil), // 20: FirecrackerMachineConfiguration
-	(*FirecrackerRootDrive)(nil),            // 21: FirecrackerRootDrive
-	(*FirecrackerDriveMount)(nil),           // 22: FirecrackerDriveMount
-	(*FirecrackerNetworkInterface)(nil),     // 23: FirecrackerNetworkInterface
-	(*FirecrackerBalloonDevice)(nil),        // 24: FirecrackerBalloonDevice
-	(*DriveOverride)(nil),                   // 25: DriveOverride
+	(*FlushCacheRequest)(nil),               // 20: FlushCacheRequest
+	(*FlushCacheResponse)(nil),              // 21: FlushCacheResponse
+	(*FirecrackerMachineConfiguration)(nil), // 22: FirecrackerMachineConfiguration
+	(*FirecrackerRootDrive)(nil),            // 23: FirecrackerRootDrive
+	(*FirecrackerDriveMount)(nil),           // 24: FirecrackerDriveMount
+	(*FirecrackerNetworkInterface)(nil),     // 25: FirecrackerNetworkInterface
+	(*FirecrackerBalloonDevice)(nil),        // 26: FirecrackerBalloonDevice
+	(*DriveOverride)(nil),                   // 27: DriveOverride
 }
 var file_firecracker_proto_depIdxs = []int32{
-	20, // 0: CreateVMRequest.MachineCfg:type_name -> FirecrackerMachineConfiguration
-	21, // 1: CreateVMRequest.RootDrive:type_name -> FirecrackerRootDrive
-	22, // 2: CreateVMRequest.DriveMounts:type_name -> FirecrackerDriveMount
-	23, // 3: CreateVMRequest.NetworkInterfaces:type_name -> FirecrackerNetworkInterface
+	22, // 0: CreateVMRequest.MachineCfg:type_name -> FirecrackerMachineConfiguration
+	23, // 1: CreateVMRequest.RootDrive:type_name -> FirecrackerRootDrive
+	24, // 2: CreateVMRequest.DriveMounts:type_name -> FirecrackerDriveMount
+	25, // 3: CreateVMRequest.NetworkInterfaces:type_name -> FirecrackerNetworkInterface
 	12, // 4: CreateVMRequest.JailerConfig:type_name -> JailerConfig
-	24, // 5: CreateVMRequest.BalloonDevice:type_name -> FirecrackerBalloonDevice
-	25, // 6: CreateVMRequest.DriveOverrides:type_name -> DriveOverride
+	26, // 5: CreateVMRequest.BalloonDevice:type_name -> FirecrackerBalloonDevice
+	27, // 6: CreateVMRequest.DriveOverrides:type_name -> DriveOverride
 	0,  // 7: JailerConfig.DriveExposePolicy:type_name -> DriveExposePolicy
-	24, // 8: GetBalloonConfigResponse.BalloonConfig:type_name -> FirecrackerBalloonDevice
+	26, // 8: GetBalloonConfigResponse.BalloonConfig:type_name -> FirecrackerBalloonDevice
 	9,  // [9:9] is the sub-list for method output_type
 	9,  // [9:9] is the sub-list for method input_type
 	9,  // [9:9] is the sub-list for extension type_name
@@ -1913,6 +2060,30 @@ func file_firecracker_proto_init() {
 				return nil
 			}
 		}
+		file_firecracker_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*FlushCacheRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_firecracker_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*FlushCacheResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -1920,7 +2091,7 @@ func file_firecracker_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_firecracker_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   19,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

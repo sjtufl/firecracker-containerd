@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	taskAPI "github.com/containerd/containerd/api/runtime/task/v2"
 	"github.com/containerd/containerd/cio"
@@ -771,4 +772,85 @@ func (ts *TaskService) ListExistingTasks(requestCtx context.Context, req *agentT
 	return &agentTaskTtrpc.ListExistingTasksResponse{
 		Tasks: tasks,
 	}, nil
+}
+
+// ExecuteCommand executes a command inside the microVM and returns the result
+func (ts *TaskService) ExecuteCommand(requestCtx context.Context, req *agentTaskTtrpc.ExecuteCommandRequest) (*agentTaskTtrpc.ExecuteCommandResponse, error) {
+	logger := log.G(requestCtx).WithField("name", "ExecuteCommand").WithField("command", req.Command)
+	defer logPanicAndDie(logger)
+
+	logger.Debug("executing command in microVM")
+
+	// Create context with timeout if specified
+	ctx := requestCtx
+	var cancel context.CancelFunc
+	if req.TimeoutSeconds > 0 {
+		timeout := time.Duration(req.TimeoutSeconds) * time.Second
+		ctx, cancel = context.WithTimeout(requestCtx, timeout)
+		defer cancel()
+		logger.WithField("timeout_seconds", req.TimeoutSeconds).Debug("applying timeout to command execution")
+	}
+
+	// Build the command with arguments
+	var cmd *exec.Cmd
+	if len(req.Args) > 0 {
+		cmd = exec.CommandContext(ctx, req.Command, req.Args...)
+	} else {
+		cmd = exec.CommandContext(ctx, req.Command)
+	}
+
+	// Set working directory if specified
+	if req.WorkingDir != "" {
+		cmd.Dir = req.WorkingDir
+	}
+
+	// Set environment variables if specified
+	if len(req.Env) > 0 {
+		env := os.Environ()
+		for key, value := range req.Env {
+			env = append(env, fmt.Sprintf("%s=%s", key, value))
+		}
+		cmd.Env = env
+	}
+
+	// Execute the command and capture output
+	stdout, stderr, err := executeCommand(cmd)
+
+	response := &agentTaskTtrpc.ExecuteCommandResponse{
+		Stdout: string(stdout),
+		Stderr: string(stderr),
+	}
+
+	if err != nil {
+		logger.WithError(err).Error("command execution failed")
+		response.Success = false
+		response.Error = err.Error()
+
+		// Try to extract exit code from error
+		if exitError, ok := err.(*exec.ExitError); ok {
+			response.ExitCode = int32(exitError.ExitCode())
+		} else {
+			response.ExitCode = -1
+		}
+	} else {
+		response.Success = true
+		response.ExitCode = 0
+	}
+
+	logger.WithFields(logrus.Fields{
+		"exit_code": response.ExitCode,
+		"success":   response.Success,
+	}).Debug("command execution completed")
+
+	return response, nil
+}
+
+// executeCommand executes a command and returns stdout, stderr and error
+func executeCommand(cmd *exec.Cmd) ([]byte, []byte, error) {
+	var stdout, stderr strings.Builder
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	return []byte(stdout.String()), []byte(stderr.String()), err
 }
