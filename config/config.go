@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/firecracker-microvm/firecracker-containerd/internal"
 	"github.com/firecracker-microvm/firecracker-containerd/internal/debug"
@@ -56,6 +57,7 @@ type Config struct {
 	// directory.
 	ShimBaseDir  string       `json:"shim_base_dir"`
 	JailerConfig JailerConfig `json:"jailer"`
+	VSockConfig  VSockConfig  `json:"vsock"`
 
 	DebugHelper *debug.Helper `json:"-"`
 }
@@ -65,6 +67,15 @@ type Config struct {
 type JailerConfig struct {
 	RuncBinaryPath string `json:"runc_binary_path"`
 	RuncConfigPath string `json:"runc_config_path"`
+}
+
+// VSockConfig houses configuration for vsock connection management
+type VSockConfig struct {
+	MaxRetries     int           `json:"max_retries"`
+	InitialBackoff time.Duration `json:"initial_backoff"`
+	MaxBackoff     time.Duration `json:"max_backoff"`
+	BackoffFactor  float64       `json:"backoff_factor"`
+	ConnectTimeout time.Duration `json:"connect_timeout"`
 }
 
 // LoadConfig loads configuration from JSON file at 'path'
@@ -89,6 +100,13 @@ func LoadConfig(path string) (*Config, error) {
 		ShimBaseDir:     defaultShimBaseDir,
 		JailerConfig: JailerConfig{
 			RuncConfigPath: runcConfigPath,
+		},
+		VSockConfig: VSockConfig{
+			MaxRetries:     3,
+			InitialBackoff: 100 * time.Millisecond,
+			MaxBackoff:     5 * time.Second,
+			BackoffFactor:  2.0,
+			ConnectTimeout: 5 * time.Second,
 		},
 	}
 

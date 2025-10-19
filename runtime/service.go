@@ -47,7 +47,6 @@ import (
 	"github.com/containerd/ttrpc"
 	"github.com/firecracker-microvm/firecracker-go-sdk"
 	"github.com/firecracker-microvm/firecracker-go-sdk/client/models"
-	"github.com/firecracker-microvm/firecracker-go-sdk/vsock"
 	"github.com/gofrs/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/sirupsen/logrus"
@@ -135,14 +134,18 @@ type service struct {
 	config *config.Config
 
 	// vmReady is closed once CreateVM has been successfully called
-	vmReady                  chan struct{}
-	vmStartOnce              sync.Once
-	agentClient              taskAPI.TaskService
-	agentTaskClient          agentTaskTtrpc.AgentTaskService
+	vmReady     chan struct{}
+	vmStartOnce sync.Once
+
+	// Connection management for resilient vsock communication
+	connectionManager *ConnectionManager
+	agentClient       taskAPI.TaskService
+	agentTaskClient   agentTaskTtrpc.AgentTaskService
+	eventBridgeClient eventbridge.Getter
+	driveMountClient  drivemount.DriveMounterService
+	ioProxyClient     ioproxy.IOProxyService
+
 	taskTranslator           vm.TaskTranslator
-	eventBridgeClient        eventbridge.Getter
-	driveMountClient         drivemount.DriveMounterService
-	ioProxyClient            ioproxy.IOProxyService
 	jailer                   jailer
 	containerStubHandler     *StubDriveHandler
 	driveMountStubs          []MountableStubDrive
@@ -687,17 +690,28 @@ func (s *service) createVM(requestCtx context.Context, request *proto.CreateVMRe
 	}
 
 	s.logger.Info("calling agent")
-	conn, err := vsock.DialContext(requestCtx, relVSockPath, defaultVsockPort, vsock.WithLogger(s.logger))
-	if err != nil {
-		return fmt.Errorf("failed to dial the VM over vsock: %w", err)
+
+	// Create connection manager with configuration
+	connConfig := &ConnectionConfig{
+		MaxRetries:     s.config.VSockConfig.MaxRetries,
+		InitialBackoff: s.config.VSockConfig.InitialBackoff,
+		MaxBackoff:     s.config.VSockConfig.MaxBackoff,
+		BackoffFactor:  s.config.VSockConfig.BackoffFactor,
+		ConnectTimeout: s.config.VSockConfig.ConnectTimeout,
+	}
+	s.connectionManager = NewConnectionManager(relVSockPath, defaultVsockPort, s.logger, connConfig)
+
+	// Establish initial connection
+	if err := s.connectionManager.Connect(requestCtx); err != nil {
+		return fmt.Errorf("failed to establish initial vsock connection: %w", err)
 	}
 
-	rpcClient := ttrpc.NewClient(conn, ttrpc.WithOnClose(func() { _ = conn.Close() }))
-	s.agentClient = taskAPI.NewTaskClient(rpcClient)
-	s.agentTaskClient = agentTaskTtrpc.NewAgentTaskClient(rpcClient)
-	s.eventBridgeClient = eventbridge.NewGetterClient(rpcClient)
-	s.driveMountClient = drivemount.NewDriveMounterClient(rpcClient)
-	s.ioProxyClient = ioproxy.NewIOProxyClient(rpcClient)
+	// Create resilient client wrappers
+	s.agentClient = NewResilientTaskClient(s.connectionManager)
+	s.agentTaskClient = NewResilientAgentTaskClient(s.connectionManager)
+	s.eventBridgeClient = NewResilientEventBridgeClient(s.connectionManager)
+	s.driveMountClient = NewResilientDriveMountClient(s.connectionManager)
+	s.ioProxyClient = NewResilientIOProxyClient(s.connectionManager)
 	s.exitAfterAllTasksDeleted = request.ExitAfterAllTasksDeleted
 
 	if !request.ShouldLoadSnapshot {
@@ -793,7 +807,7 @@ func (s *service) GetVMInfo(_ context.Context, _ *proto.GetVMInfoRequest) (*prot
 	cgroupPath := ""
 	if c, ok := s.jailer.(cgroupPather); ok {
 		cgroupPath = c.CgroupPath()
-	}
+    }
 
 	return &proto.GetVMInfoResponse{
 		VMID:            s.vmID,
@@ -2121,6 +2135,15 @@ func (s *service) Cleanup(requestCtx context.Context) (*taskAPI.DeleteResponse, 
 func (s *service) cleanup() error {
 	s.cleanupOnce.Do(func() {
 		var result *multierror.Error
+
+		// Close connection manager
+		if s.connectionManager != nil {
+			if err := s.connectionManager.Close(); err != nil {
+				result = multierror.Append(result, err)
+				s.logger.WithError(err).Error("failed to close connection manager")
+			}
+		}
+
 		// we ignore the error here due to cleanup will only succeed if the jailing
 		// process was killed via SIGKILL
 		if err := s.jailer.Close(); err != nil {
