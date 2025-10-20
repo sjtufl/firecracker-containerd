@@ -307,7 +307,10 @@ func (m *taskManager) DeleteProcess(
 		return nil, err
 	}
 
-	proc, err := m.deleteProc(req.ID, req.ExecID)
+	var logger = m.logger.WithField("TaskID", req.ID).WithField("ExecID", req.ExecID)
+	logger.Infof("deleted process with exit status %+v", resp)
+
+	_, err = m.deleteProc(req.ID, req.ExecID)
 	if err != nil {
 		return nil, err
 	}
@@ -317,7 +320,9 @@ func (m *taskManager) DeleteProcess(
 	// Timeouts on waiting to close this channel after process exit are handled by the
 	// IOProxy implementation being used for this proc. There's no extra timeout here
 	// in order to keep things simpler.
-	<-proc.ioCopyDone
+	// Commenting out to workaround memory snapshot scenario (registering existing tasks)
+	// Old io proxy may not work after restore.
+	// <-proc.ioCopyDone
 
 	return resp, nil
 }

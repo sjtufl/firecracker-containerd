@@ -1568,6 +1568,7 @@ func (s *service) Delete(requestCtx context.Context, req *taskAPI.DeleteRequest)
 	logger.Debug("delete")
 
 	// Translate task ID for clone mode if needed
+	var originalTaskID = req.ID
 	internalTaskID := s.taskTranslator.TranslateToInternal(req.ID)
 	if internalTaskID != req.ID {
 		logger.WithFields(logrus.Fields{
@@ -1594,7 +1595,14 @@ func (s *service) Delete(requestCtx context.Context, req *taskAPI.DeleteRequest)
 
 	err = s.deleteFIFOs(req.ID, req.ExecID)
 	if err != nil {
-		return nil, err
+		// Don't fail the entire delete if we can't delete the FIFOs
+		logger.Errorf("failed to delete FIFOs: %v", err)
+	}
+
+	if internalTaskID != originalTaskID {
+		// For memory snapshot mode, we do not need to cleanup anything further
+		logger.Debug("Memory snapshot clone mode: skipping further cleanup after delete")
+		return resp, nil
 	}
 
 	// Only delete a process as like runc when there is ExecID
@@ -1626,8 +1634,6 @@ func (s *service) Delete(requestCtx context.Context, req *taskAPI.DeleteRequest)
 	if err = os.Remove(dir.RootPath()); err != nil {
 		result = multierror.Append(result, fmt.Errorf("failed to remove the bundle directory of the container: %s: %w", dir.RootPath(), err))
 	}
-
-	logger.Debugf("Delete process response 2: %v", resp.String())
 
 	return resp, result.ErrorOrNil()
 }
