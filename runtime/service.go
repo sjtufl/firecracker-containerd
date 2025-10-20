@@ -807,7 +807,7 @@ func (s *service) GetVMInfo(_ context.Context, _ *proto.GetVMInfoRequest) (*prot
 	cgroupPath := ""
 	if c, ok := s.jailer.(cgroupPather); ok {
 		cgroupPath = c.CgroupPath()
-    }
+	}
 
 	return &proto.GetVMInfoResponse{
 		VMID:            s.vmID,
@@ -1496,15 +1496,41 @@ func (s *service) Start(requestCtx context.Context, req *taskAPI.StartRequest) (
 
 	log.G(requestCtx).WithFields(logrus.Fields{"task_id": req.ID, "exec_id": req.ExecID}).Debug("start")
 
-	// Check if this is a clone mode translation
+	// Translate task ID for clone mode if needed
 	internalTaskID := s.taskTranslator.TranslateToInternal(req.ID)
-	if internalTaskID != req.ID {
+	isCloneMode := internalTaskID != req.ID
+	isExecProcess := req.ExecID != "" && req.ExecID != taskExecID
+
+	// For exec processes (e.g., "firecracker-ctr exec ..."), we always need to actually start
+	// a new process, even in clone mode
+	if isExecProcess {
+		log.G(requestCtx).WithFields(logrus.Fields{
+			"task_id":       req.ID,
+			"exec_id":       req.ExecID,
+			"is_clone_mode": isCloneMode,
+		}).Debug("starting exec process - creating new process")
+
+		// Translate the request if needed
+		if isCloneMode {
+			req.ID = internalTaskID
+		}
+
+		// Always start the exec process
+		agent, err := s.agent()
+		if err != nil {
+			return nil, err
+		}
+		return agent.Start(requestCtx, req)
+	}
+
+	// For container tasks (not exec processes), check if we're in clone mode
+	if isCloneMode {
 		log.G(requestCtx).WithFields(logrus.Fields{
 			"external_task_id": req.ID,
 			"internal_task_id": internalTaskID,
-		}).Debug("clone mode: task already running, returning existing PID")
+		}).Debug("clone mode: container task already running, returning existing PID")
 
-		// For clone mode, the task is already running, so we need to get its current state
+		// For clone mode, the container task is already running, so we need to get its current state
 		// instead of trying to start it again
 		agent, err := s.agent()
 		if err != nil {
@@ -1522,7 +1548,7 @@ func (s *service) Start(requestCtx context.Context, req *taskAPI.StartRequest) (
 		}, nil
 	}
 
-	// Normal case: actually start the task
+	// Normal case: actually start the container task
 	agent, err := s.agent()
 	if err != nil {
 		return nil, err
