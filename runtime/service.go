@@ -1590,6 +1590,8 @@ func (s *service) Delete(requestCtx context.Context, req *taskAPI.DeleteRequest)
 		return nil, err
 	}
 
+	logger.Debugf("Delete process response: %v", resp.String())
+
 	err = s.deleteFIFOs(req.ID, req.ExecID)
 	if err != nil {
 		return nil, err
@@ -1624,6 +1626,8 @@ func (s *service) Delete(requestCtx context.Context, req *taskAPI.DeleteRequest)
 	if err = os.Remove(dir.RootPath()); err != nil {
 		result = multierror.Append(result, fmt.Errorf("failed to remove the bundle directory of the container: %s: %w", dir.RootPath(), err))
 	}
+
+	logger.Debugf("Delete process response 2: %v", resp.String())
 
 	return resp, result.ErrorOrNil()
 }
@@ -1826,6 +1830,21 @@ func (s *service) Pause(requestCtx context.Context, req *taskAPI.PauseRequest) (
 	defer logPanicAndDie(log.G(requestCtx))
 
 	log.G(requestCtx).WithField("task_id", req.ID).Debug("pause")
+
+	// Translate task ID for clone mode if needed
+	internalTaskID := s.taskTranslator.TranslateToInternal(req.ID)
+	if internalTaskID != req.ID {
+		log.G(requestCtx).WithFields(logrus.Fields{
+			"external_task_id": req.ID,
+			"internal_task_id": internalTaskID,
+		}).Debug("translating task ID for clone mode")
+
+		// Create a copy of the request with the internal task ID
+		translatedReq := *req
+		translatedReq.ID = internalTaskID
+		req = &translatedReq
+	}
+
 	agent, err := s.agent()
 	if err != nil {
 		return nil, err
@@ -1843,6 +1862,21 @@ func (s *service) Resume(requestCtx context.Context, req *taskAPI.ResumeRequest)
 	defer logPanicAndDie(log.G(requestCtx))
 
 	log.G(requestCtx).WithField("task_id", req.ID).Debug("resume")
+
+	// Translate task ID for clone mode if needed
+	internalTaskID := s.taskTranslator.TranslateToInternal(req.ID)
+	if internalTaskID != req.ID {
+		log.G(requestCtx).WithFields(logrus.Fields{
+			"external_task_id": req.ID,
+			"internal_task_id": internalTaskID,
+		}).Debug("translating task ID for clone mode")
+
+		// Create a copy of the request with the internal task ID
+		translatedReq := *req
+		translatedReq.ID = internalTaskID
+		req = &translatedReq
+	}
+
 	agent, err := s.agent()
 	if err != nil {
 		return nil, err
@@ -1923,6 +1957,21 @@ func (s *service) CloseIO(requestCtx context.Context, req *taskAPI.CloseIOReques
 	defer logPanicAndDie(log.G(requestCtx))
 
 	log.G(requestCtx).WithFields(logrus.Fields{"task_id": req.ID, "exec_id": req.ExecID}).Debug("close_io")
+
+	// Translate task ID for clone mode if needed
+	internalTaskID := s.taskTranslator.TranslateToInternal(req.ID)
+	if internalTaskID != req.ID {
+		log.G(requestCtx).WithFields(logrus.Fields{
+			"external_task_id": req.ID,
+			"internal_task_id": internalTaskID,
+		}).Debug("translating task ID for clone mode")
+
+		// Create a copy of the request with the internal task ID
+		translatedReq := *req
+		translatedReq.ID = internalTaskID
+		req = &translatedReq
+	}
+
 	agent, err := s.agent()
 	if err != nil {
 		return nil, err
@@ -1940,6 +1989,21 @@ func (s *service) Checkpoint(requestCtx context.Context, req *taskAPI.Checkpoint
 	defer logPanicAndDie(log.G(requestCtx))
 
 	log.G(requestCtx).WithFields(logrus.Fields{"task_id": req.ID, "path": req.Path}).Info("checkpoint")
+
+	// Translate task ID for clone mode if needed
+	internalTaskID := s.taskTranslator.TranslateToInternal(req.ID)
+	if internalTaskID != req.ID {
+		log.G(requestCtx).WithFields(logrus.Fields{
+			"external_task_id": req.ID,
+			"internal_task_id": internalTaskID,
+		}).Debug("translating task ID for clone mode")
+
+		// Create a copy of the request with the internal task ID
+		translatedReq := *req
+		translatedReq.ID = internalTaskID
+		req = &translatedReq
+	}
+
 	agent, err := s.agent()
 	if err != nil {
 		return nil, err
@@ -1957,6 +2021,21 @@ func (s *service) Connect(requestCtx context.Context, req *taskAPI.ConnectReques
 	defer logPanicAndDie(log.G(requestCtx))
 
 	log.G(requestCtx).WithField("id", req.ID).Debug("connect")
+
+	// Translate task ID for clone mode if needed
+	internalTaskID := s.taskTranslator.TranslateToInternal(req.ID)
+	if internalTaskID != req.ID {
+		log.G(requestCtx).WithFields(logrus.Fields{
+			"external_task_id": req.ID,
+			"internal_task_id": internalTaskID,
+		}).Debug("translating task ID for clone mode")
+
+		// Create a copy of the request with the internal task ID
+		translatedReq := *req
+		translatedReq.ID = internalTaskID
+		req = &translatedReq
+	}
+
 	agent, err := s.agent()
 	if err != nil {
 		return nil, err
@@ -2008,6 +2087,11 @@ func (s *service) isPaused(ctx context.Context) (bool, error) {
 func (s *service) forceTerminate(_ context.Context) error {
 	s.logger.Errorf("forcefully terminate VM %s", s.vmID)
 
+	// Mark connection manager as shutting down to prevent wasteful retry attempts
+	if s.connectionManager != nil {
+		s.connectionManager.BeginShutdown()
+	}
+
 	err := s.jailer.Stop(true)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to stop")
@@ -2028,6 +2112,11 @@ func (s *service) terminate(ctx context.Context) (retErr error) {
 			retErr = s.forceTerminate(ctx)
 		}
 	}()
+
+	// Mark connection manager as shutting down to prevent wasteful retry attempts
+	if s.connectionManager != nil {
+		s.connectionManager.BeginShutdown()
+	}
 
 	err := s.waitVMReady()
 	if err != nil {
@@ -2101,6 +2190,20 @@ func (s *service) Stats(requestCtx context.Context, req *taskAPI.StatsRequest) (
 func (s *service) Update(requestCtx context.Context, req *taskAPI.UpdateTaskRequest) (*types.Empty, error) {
 	defer logPanicAndDie(log.G(requestCtx))
 	log.G(requestCtx).WithField("task_id", req.ID).Debug("update")
+
+	// Translate task ID for clone mode if needed
+	internalTaskID := s.taskTranslator.TranslateToInternal(req.ID)
+	if internalTaskID != req.ID {
+		log.G(requestCtx).WithFields(logrus.Fields{
+			"external_task_id": req.ID,
+			"internal_task_id": internalTaskID,
+		}).Debug("translating task ID for clone mode")
+
+		// Create a copy of the request with the internal task ID
+		translatedReq := *req
+		translatedReq.ID = internalTaskID
+		req = &translatedReq
+	}
 
 	agent, err := s.agent()
 	if err != nil {

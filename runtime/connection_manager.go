@@ -69,11 +69,12 @@ type ConnectionManager struct {
 	logger    *logrus.Entry
 	config    *ConnectionConfig
 
-	mu         sync.RWMutex
-	conn       net.Conn
-	rpcClient  *ttrpc.Client
-	clients    *AgentClients
-	connecting bool
+	mu           sync.RWMutex
+	conn         net.Conn
+	rpcClient    *ttrpc.Client
+	clients      *AgentClients
+	connecting   bool
+	shuttingDown bool // flag to disable retries during shutdown
 }
 
 // NewConnectionManager creates a new connection manager
@@ -156,6 +157,11 @@ func (cm *ConnectionManager) reconnectIfNeeded(ctx context.Context) (*AgentClien
 		return cm.clients, nil
 	}
 
+	// If shutting down, don't retry - fail fast
+	if cm.shuttingDown {
+		return nil, fmt.Errorf("connection manager is shutting down, retries disabled")
+	}
+
 	// Avoid multiple concurrent connection attempts
 	if cm.connecting {
 		cm.mu.Unlock()
@@ -175,6 +181,12 @@ func (cm *ConnectionManager) reconnectIfNeeded(ctx context.Context) (*AgentClien
 	backoff := cm.config.InitialBackoff
 	for attempt := 0; attempt <= cm.config.MaxRetries; attempt++ {
 		if attempt > 0 {
+			// Check if we've been marked as shutting down during retry loop
+			if cm.shuttingDown {
+				cm.logger.Debug("aborting vsock reconnection attempts due to shutdown")
+				return nil, fmt.Errorf("connection manager is shutting down, retries disabled")
+			}
+
 			cm.logger.WithFields(logrus.Fields{
 				"attempt": attempt,
 				"backoff": backoff,
@@ -221,6 +233,16 @@ func (cm *ConnectionManager) MarkConnectionBroken() {
 		cm.logger.Warn("marking vsock connection as broken")
 		cm.cleanup()
 	}
+}
+
+// BeginShutdown marks the connection manager as shutting down, disabling reconnection attempts.
+// This should be called when the VM is being stopped or cleaned up to prevent wasteful retry attempts.
+func (cm *ConnectionManager) BeginShutdown() {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	cm.logger.Debug("marking connection manager as shutting down")
+	cm.shuttingDown = true
 }
 
 // cleanup closes the connection and clears clients (must be called with lock held)

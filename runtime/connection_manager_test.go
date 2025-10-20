@@ -96,3 +96,29 @@ func TestConnectionConfig_Defaults(t *testing.T) {
 		t.Errorf("Expected ConnectTimeout=%v, got %v", defaultVSockConnectTimeout, config.ConnectTimeout)
 	}
 }
+
+func TestConnectionManager_BeginShutdown(t *testing.T) {
+	logger := logrus.NewEntry(logrus.New())
+	config := &ConnectionConfig{
+		MaxRetries:     2,
+		InitialBackoff: 10 * time.Millisecond,
+		MaxBackoff:     100 * time.Millisecond,
+		BackoffFactor:  2.0,
+		ConnectTimeout: 1 * time.Second,
+	}
+
+	cm := NewConnectionManager("/fake/path", 12345, logger, config)
+
+	// Initially shuttingDown should be false
+	if cm.shuttingDown {
+		t.Error("Expected shuttingDown to be false initially")
+	}
+
+	// Call BeginShutdown
+	cm.BeginShutdown()
+
+	// Now shuttingDown should be true
+	if !cm.shuttingDown {
+		t.Error("Expected shuttingDown to be true after BeginShutdown")
+	}
+}
