@@ -93,6 +93,8 @@ const (
 	// taskExecID is a special exec ID that is pointing its task itself.
 	// While the constant is defined here, the convention is coming from containerd.
 	taskExecID = ""
+
+	defaultRetryCount = 5
 )
 
 var (
@@ -1350,10 +1352,29 @@ func (s *service) Create(requestCtx context.Context, request *taskAPI.CreateTask
 
 	// Check if this is a clone mode container by detecting if we have existing tasks from a snapshot
 	if s.agentTaskClient != nil {
-		existingTasksResp, err := s.agentTaskClient.ListExistingTasks(requestCtx, &agentTaskTtrpc.ListExistingTasksRequest{})
+		var existingTasksResp *agentTaskTtrpc.ListExistingTasksResponse
+		var err error
+
+		// Retry listing existing tasks up to defaultRetryCount times
+		maxRetries := defaultRetryCount
+		for attempt := 0; attempt < maxRetries; attempt++ {
+			existingTasksResp, err = s.agentTaskClient.ListExistingTasks(requestCtx, &agentTaskTtrpc.ListExistingTasksRequest{})
+			if err == nil {
+				break
+			}
+
+			if attempt < maxRetries-1 {
+				logger.WithError(err).WithField("attempt", attempt+1).Warn("failed to list existing tasks, retrying")
+				time.Sleep(100 * time.Millisecond * time.Duration(1<<attempt)) // Exponential backoff: 100ms, 200ms, 400ms
+			}
+		}
+
 		if err != nil {
-			logger.WithError(err).Debug("failed to list existing tasks, proceeding as normal create")
-		} else if len(existingTasksResp.Tasks) > 0 {
+			logger.WithError(err).Error("failed to list existing tasks after retries")
+			return nil, fmt.Errorf("failed to list existing tasks after %d attempts: %w", maxRetries, err)
+		}
+
+		if len(existingTasksResp.Tasks) > 0 {
 			// We have existing tasks, check if we should use clone mode translation
 			logger.WithField("existing_tasks", len(existingTasksResp.Tasks)).Info("detected existing tasks from snapshot")
 
